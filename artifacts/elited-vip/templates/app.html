@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Elited Vip</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--bg:#08080f;--card:#111120;--card2:#1a1a2e;--border:rgba(255,255,255,.07);--purple:#7c3aed;--purple2:#9f67fa;--gold:#f59e0b;--gold2:#fbbf24;--text:#fff;--muted:rgba(255,255,255,.45);--r:16px;}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;}
+.page{display:none;flex-direction:column;flex:1;overflow:hidden;}
+.page.active{display:flex;}
+.scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;}
+.app-header{background:linear-gradient(135deg,#1a0533 0%,#0d1b4b 100%);padding:14px 16px 12px;display:flex;align-items:center;gap:10px;flex-shrink:0;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50;}
+.logo-mark{width:36px;height:36px;background:linear-gradient(135deg,var(--purple),#2563eb);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.logo-text{flex:1;}
+.logo-text h1{font-size:16px;font-weight:800;}
+.logo-text p{font-size:10px;color:var(--muted);}
+.prem-pill{display:flex;align-items:center;gap:4px;padding:5px 10px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid;flex-shrink:0;}
+.prem-pill.on{background:rgba(245,158,11,.15);border-color:rgba(245,158,11,.4);color:var(--gold2);}
+.prem-pill.off{background:rgba(124,58,237,.12);border-color:rgba(124,58,237,.35);color:var(--purple2);}
+.hero{background:linear-gradient(180deg,#1a0533 0%,var(--bg) 100%);padding:20px 16px 24px;text-align:center;}
+.hero-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.3);padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;color:var(--purple2);margin-bottom:10px;}
+.hero h2{font-size:24px;font-weight:900;line-height:1.2;margin-bottom:6px;}
+.hero h2 span{background:linear-gradient(135deg,var(--purple2),var(--gold2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.hero p{font-size:13px;color:var(--muted);margin-bottom:16px;}
+.hero-stats{display:flex;justify-content:center;gap:24px;}
+.hero-stat .val{font-size:22px;font-weight:800;color:var(--purple2);}
+.hero-stat .lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+.prem-card{margin:0 14px 16px;border-radius:var(--r);overflow:hidden;border:1px solid;}
+.prem-card.on{background:linear-gradient(135deg,rgba(34,197,94,.08),rgba(16,185,129,.05));border-color:rgba(34,197,94,.2);}
+.prem-card.off{background:linear-gradient(135deg,rgba(124,58,237,.1),rgba(37,99,235,.07));border-color:rgba(124,58,237,.25);}
+.pc-body{padding:16px;}
+.pc-row{display:flex;align-items:center;gap:12px;}
+.pc-icon{font-size:32px;}
+.pc-info{flex:1;}
+.pc-info h3{font-size:15px;font-weight:800;margin-bottom:3px;}
+.pc-info p{font-size:12px;color:var(--muted);}
+.pc-days{font-size:26px;font-weight:900;color:#22c55e;}
+.pc-days span{font-size:13px;font-weight:600;color:var(--muted);}
+.section{padding:0 14px 16px;}
+.sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.sec-hd h3{font-size:14px;font-weight:800;}
+.sec-hd span{font-size:11px;color:var(--muted);}
+.cat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+.cat-card{border-radius:14px;overflow:hidden;cursor:pointer;transition:transform .15s;border:1px solid var(--border);}
+.cat-card:active{transform:scale(.95);}
+.cat-bg{height:90px;display:flex;align-items:center;justify-content:center;font-size:36px;position:relative;}
+.cat-foot{background:var(--card);padding:9px 10px;}
+.cat-foot .name{font-size:12px;font-weight:700;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cat-foot .cnt{font-size:10px;color:var(--muted);}
+.sub-badge{font-size:9px;background:rgba(124,58,237,.2);color:var(--purple2);padding:1px 6px;border-radius:8px;font-weight:700;}
+.g0{background:linear-gradient(135deg,#1a0533,#2563eb);}
+.g1{background:linear-gradient(135deg,#0f2027,#2c5364);}
+.g2{background:linear-gradient(135deg,#330033,#7c3aed);}
+.g3{background:linear-gradient(135deg,#0d1117,#1f6feb);}
+.g4{background:linear-gradient(135deg,#1a1a0a,#d97706);}
+.g5{background:linear-gradient(135deg,#0a1a0a,#16a34a);}
+.g6{background:linear-gradient(135deg,#1a0a0a,#dc2626);}
+.g7{background:linear-gradient(135deg,#0a0a1a,#6366f1);}
+.pg-hd{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg);}
+.back-btn{width:34px;height:34px;background:var(--card);border:1px solid var(--border);border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.back-btn:active{opacity:.7;}
+.pg-hd h2{font-size:15px;font-weight:800;flex:1;}
+.cnt-badge{font-size:11px;background:rgba(124,58,237,.15);color:var(--purple2);padding:4px 10px;border-radius:20px;font-weight:700;flex-shrink:0;}
+.nav-btns{display:flex;gap:8px;padding:12px 14px 20px;flex-shrink:0;}
+.nav-btn{flex:1;padding:11px 8px;border:none;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px;}
+.nav-btn:active{transform:scale(.96);}
+.nb-back{background:var(--card);color:var(--muted);border:1px solid var(--border);}
+.nb-home{background:rgba(124,58,237,.15);color:var(--purple2);border:1px solid rgba(124,58,237,.3);}
+.nb-prem{background:linear-gradient(135deg,rgba(245,158,11,.15),rgba(251,191,36,.1));color:var(--gold2);border:1px solid rgba(245,158,11,.3);}
+.subcat-list{padding:12px 14px;display:flex;flex-direction:column;gap:8px;}
+.subcat-item{background:var(--card);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;cursor:pointer;border:1px solid var(--border);transition:all .15s;}
+.subcat-item:active{transform:scale(.98);}
+.subcat-emoji{font-size:26px;}
+.subcat-info{flex:1;}
+.subcat-info .nm{font-size:14px;font-weight:700;}
+.subcat-info .cn{font-size:11px;color:var(--muted);margin-top:2px;}
+.subcat-arrow{font-size:18px;color:var(--muted);}
+.video-list{padding:12px 14px;display:flex;flex-direction:column;gap:8px;}
+.vid-item{background:var(--card);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;cursor:pointer;border:1px solid var(--border);transition:all .15s;}
+.vid-item:active{transform:scale(.97);}
+.vid-item.locked{opacity:.7;}
+.vid-num{width:32px;height:32px;border-radius:10px;background:rgba(124,58,237,.15);color:var(--purple2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;}
+.vid-num.lk{background:rgba(255,255,255,.06);color:var(--muted);}
+.vid-info{flex:1;}
+.vid-info .vt{font-size:13px;font-weight:700;margin-bottom:2px;}
+.vid-info .vs{font-size:11px;color:var(--muted);}
+.vid-thumb{width:72px;height:48px;border-radius:10px;object-fit:cover;flex-shrink:0;background:var(--card2);}
+.vid-play{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.vid-play.go{background:var(--purple);}
+.vid-play.lk{background:rgba(255,255,255,.06);}
+.lock-banner{margin:8px 14px;padding:14px;background:linear-gradient(135deg,rgba(124,58,237,.1),rgba(37,99,235,.07));border:1px solid rgba(124,58,237,.25);border-radius:14px;text-align:center;}
+.lock-banner h4{font-size:14px;font-weight:800;margin-bottom:4px;}
+.lock-banner p{font-size:12px;color:var(--muted);margin-bottom:12px;}
+.up-btn{width:100%;padding:13px;background:linear-gradient(135deg,var(--purple),#2563eb);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:opacity .15s;}
+.up-btn:active{opacity:.85;transform:scale(.98);}
+.prem-hero{text-align:center;padding:24px 16px 20px;background:linear-gradient(180deg,rgba(124,58,237,.08) 0%,transparent 100%);border-bottom:1px solid var(--border);margin-bottom:0;}
+.prem-hero .crown{font-size:52px;margin-bottom:10px;}
+.prem-hero h2{font-size:22px;font-weight:900;margin-bottom:6px;}
+.prem-hero p{font-size:13px;color:var(--muted);}
+.feat-list{padding:14px 14px 0;display:flex;flex-direction:column;gap:8px;}
+.feat-item{background:var(--card);border-radius:12px;padding:12px;display:flex;align-items:center;gap:12px;border:1px solid var(--border);}
+.feat-icon{font-size:22px;}
+.feat-info .ft{font-size:13px;font-weight:700;}
+.feat-info .fd{font-size:11px;color:var(--muted);}
+.pkgs-section{padding:14px 14px 0;}
+.pkgs-section h3{font-size:13px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;}
+.pkg-cards{display:flex;flex-direction:column;gap:8px;}
+.pkg-item{background:var(--card);border-radius:14px;padding:14px;border:1px solid var(--border);cursor:pointer;transition:all .15s;position:relative;overflow:hidden;}
+.pkg-item:active{transform:scale(.98);}
+.pkg-item.featured{border-color:rgba(124,58,237,.4);background:linear-gradient(135deg,rgba(124,58,237,.08),rgba(37,99,235,.05));}
+.pkg-item .pop-badge{position:absolute;top:10px;right:10px;background:var(--purple);color:#fff;font-size:9px;font-weight:800;padding:3px 8px;border-radius:20px;}
+.pkg-row{display:flex;align-items:center;gap:12px;}
+.pkg-stars-big{font-size:28px;font-weight:900;color:var(--gold2);}
+.pkg-meta{flex:1;}
+.pkg-meta .pn{font-size:14px;font-weight:800;}
+.pkg-meta .pd{font-size:11px;color:var(--muted);}
+.pkg-buy{background:var(--purple);border:none;border-radius:10px;color:#fff;font-size:12px;font-weight:800;padding:8px 14px;cursor:pointer;white-space:nowrap;transition:opacity .15s;}
+.pkg-buy:active{opacity:.8;}
+.send-overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:200;display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;}
+.send-overlay.show{display:flex;}
+.send-card{background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:28px 24px;width:100%;max-width:340px;display:flex;flex-direction:column;align-items:center;gap:14px;}
+.send-icon{font-size:54px;line-height:1;}
+.send-title{font-size:17px;font-weight:900;}
+.send-sub{font-size:13px;color:var(--muted);line-height:1.5;}
+.send-btn{width:100%;padding:13px;border:none;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;transition:opacity .15s;}
+.send-btn:active{opacity:.8;}
+.send-btn.primary{background:linear-gradient(135deg,var(--purple),#2563eb);color:#fff;}
+.send-btn.sec{background:rgba(255,255,255,.06);color:var(--muted);margin-top:4px;}
+.spinner{width:40px;height:40px;border:3px solid rgba(124,58,237,.2);border-top-color:var(--purple);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.bottom-nav{display:flex;background:var(--card);border-top:1px solid var(--border);flex-shrink:0;}
+.nav-item{flex:1;padding:10px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;transition:opacity .15s;color:var(--muted);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+.nav-item .ni{font-size:20px;}
+.nav-item.active{color:var(--purple2);}
+.nav-item:active{opacity:.7;}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(12px);background:#16a34a;color:#fff;padding:11px 22px;border-radius:24px;font-size:13px;font-weight:700;opacity:0;transition:all .25s;z-index:300;white-space:nowrap;pointer-events:none;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.err{background:#dc2626;}
+.toast.info{background:var(--purple);}
+.loader{display:flex;align-items:center;justify-content:center;flex:1;flex-direction:column;gap:12px;color:var(--muted);font-size:14px;min-height:200px;}
+.empty-state{text-align:center;padding:40px 20px;color:var(--muted);}
+.empty-state .ei{font-size:44px;margin-bottom:10px;}
+.empty-state h3{font-size:15px;font-weight:700;margin-bottom:5px;color:var(--text);}
+.empty-state p{font-size:13px;}
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div id="page-home" class="page active">
+  <div class="app-header">
+    <div class="logo-mark">💎</div>
+    <div class="logo-text"><h1>Elited Vip</h1><p id="user-greeting">Hoş geldiniz...</p></div>
+    <div class="prem-pill off" id="header-pill">🔒 Ücretsiz</div>
+  </div>
+  <div class="scroll" id="home-scroll">
+    <div class="loader"><div class="spinner"></div><span>Yükleniyor...</span></div>
+  </div>
+  <div id="home-nav-btns" class="nav-btns" style="display:none;"></div>
+</div>
+
+<!-- CATEGORY -->
+<div id="page-cat" class="page">
+  <div class="pg-hd">
+    <div class="back-btn" id="cat-back-btn">←</div>
+    <h2 id="cat-title">Kategori</h2>
+    <div class="cnt-badge" id="cat-badge">0</div>
+  </div>
+  <div class="scroll" id="cat-scroll"></div>
+  <div class="nav-btns" id="cat-nav-btns"></div>
+</div>
+
+<!-- PREMIUM -->
+<div id="page-premium" class="page">
+  <div class="pg-hd">
+    <div class="back-btn" onclick="goBack()">←</div>
+    <h2>Premium</h2>
+    <div class="cnt-badge">⭐ Yükselt</div>
+  </div>
+  <div class="scroll" id="prem-scroll"></div>
+  <div class="nav-btns" id="prem-nav-btns"></div>
+</div>
+
+<!-- SEND OVERLAY -->
+<div class="send-overlay" id="send-overlay">
+  <div class="send-card" id="send-card">
+    <div class="send-icon" id="send-icon">⏳</div>
+    <div class="send-title" id="send-title">Video Gönderiliyor...</div>
+    <div class="send-sub" id="send-sub">Lütfen bekleyin</div>
+    <div class="spinner" id="send-spinner"></div>
+    <button class="send-btn sec" id="send-close-btn" onclick="closeSendOverlay()" style="display:none">← Geri Dön</button>
+  </div>
+</div>
+
+<!-- DESTEK PAGE -->
+<div id="page-destek" class="page">
+  <div class="app-header"><div class="logo-mark">📩</div><div class="logo-text"><h1>Destek</h1><p>Ekibimizle yazışın</p></div></div>
+  <div class="scroll" id="destek-chat-scroll" style="padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+    <div id="destek-chat-msgs" style="display:flex;flex-direction:column;gap:8px"><div style="text-align:center;padding:24px;color:rgba(255,255,255,.3);font-size:13px">💬 Henüz mesaj yok.<br>Aşağıdan ilk mesajınızı gönderin.</div></div>
+  </div>
+  <div style="padding:10px 12px;background:var(--card2,#1a1a2e);border-top:1px solid rgba(255,255,255,.07);flex-shrink:0;display:flex;gap:8px;align-items:flex-end">
+    <textarea id="destek-msg" rows="2" placeholder="Mesajınızı yazın..." style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px 12px;color:#fff;font-size:13px;resize:none;outline:none;line-height:1.5;max-height:100px"></textarea>
+    <button id="destek-send-btn" onclick="sendDestek()" style="width:42px;height:42px;background:linear-gradient(135deg,#7c3aed,#2563eb);border:none;border-radius:11px;color:#fff;font-size:20px;cursor:pointer;flex-shrink:0">↑</button>
+  </div>
+  <div class="nav-btns" id="destek-nav-btns"></div>
+</div>
+
+<!-- REFERANS PAGE -->
+<div id="page-ref" class="page">
+  <div class="app-header"><div class="logo-mark">🔗</div><div class="logo-text"><h1>Referans</h1><p>Davet et, gün kazan</p></div></div>
+  <div class="scroll" style="padding:16px 14px">
+    <div style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(37,99,235,.1));border:1px solid rgba(124,58,237,.25);border-radius:14px;padding:14px;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px">🎁 Nasıl Çalışır?</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.65);line-height:1.9">
+        👤 Davet ettiğin kişi katılırsa → <b style="color:#a78bfa">+1 gün premium</b><br>
+        💳 Davet ettiğin kişi paket alırsa → <b style="color:#34d399">paketin yarısı kadar gün</b>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:14px">
+      <div style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;text-align:center">
+        <div style="font-size:28px;font-weight:800;color:#a78bfa" id="ref-count2">—</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:3px;text-transform:uppercase;letter-spacing:.5px">Davet</div>
+      </div>
+      <div style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;text-align:center">
+        <div style="font-size:28px;font-weight:800;color:#34d399" id="ref-days2">—</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:3px;text-transform:uppercase;letter-spacing:.5px">Gün Kazanıldı</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Davet Linkin</div>
+    <div id="ref-link-box2" style="background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:12px;font-size:12px;color:rgba(255,255,255,.6);word-break:break-all;margin-bottom:10px">Yükleniyor...</div>
+    <button onclick="copyRefLink()" style="width:100%;padding:14px;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer">📋 Davet Linkini Kopyala</button>
+  </div>
+  <div class="nav-btns" id="ref-nav-btns"></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="nav-item active" id="nav-home" onclick="goHome()"><div class="ni">🏠</div>Ana Sayfa</div>
+  <div class="nav-item" id="nav-cats" onclick="goCats()"><div class="ni">📂</div>Kategoriler</div>
+  <div class="nav-item" id="nav-prem" onclick="goPremium()"><div class="ni">⭐</div>Premium</div>
+  <div class="nav-item" id="nav-ref" onclick="goRef()"><div class="ni">🔗</div>Referans</div>
+  <div class="nav-item" id="nav-destek" onclick="goDestek()"><div class="ni">📩</div>Destek</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const tg=window.Telegram.WebApp;tg.ready();tg.expand();
+const user=tg.initDataUnsafe?.user||{};
+const USER_ID=user.id||0;
+const FIRST_NAME=user.first_name||'Üye';const USERNAME=user.username||null;
+let homeData=null,navStack=[],currentPage='home',currentCatSlug='';
+
+function showToast(msg,type='ok'){
+    const t=document.getElementById('toast');t.textContent=msg;
+    t.className='toast show'+(type==='err'?' err':type==='info'?' info':'');
+    setTimeout(()=>t.classList.remove('show'),3200);
+}
+function setNav(active){['home','cats','prem','ref','destek'].forEach(n=>document.getElementById('nav-'+n).classList.toggle('active',n===active));}
+function showPage(id,pushHistory=true){if(currentPage==='destek'&&id!=='destek')stopDestekPoll();if(pushHistory&&currentPage!==id)navStack.push(currentPage);currentPage=id;document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+id).classList.add('active');}
+async function api(path){const r=await fetch('/api'+path);return r.json();}
+async function apiPost(path,body){const r=await fetch('/api'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});return r.json();}
+
+function buildNavBtns(containerId,opt){
+    const el=document.getElementById(containerId);if(!el)return;
+    const isHome=opt&&opt.isHome,isPremium=opt&&opt.isPremium,hasBack=opt&&opt.hasBack,backFn=opt?opt.backFn:null;
+    const btns=[];
+    if(hasBack)btns.push('<button class="nav-btn nb-back" onclick="'+(backFn||'goBack()')+'">← Önceki Menü</button>');
+    if(!isHome)btns.push('<button class="nav-btn nb-home" onclick="goHome()">🏠 Ana Menü</button>');
+    if(!isPremium)btns.push('<button class="nav-btn nb-prem" onclick="goPremium()">⭐ Premium Ol</button>');
+    if(btns.length===0){el.style.display='none';return;}
+    el.style.display='flex';el.innerHTML=btns.join('');
+}
+
+async function loadHome(){
+    try{
+        const d=await api('/user/home?user_id='+USER_ID);homeData=d;updateHeader(d);
+        if(d.new_user_gift&&USER_ID){
+            const gift=await apiPost('/user/register-gift',{user_id:USER_ID,first_name:FIRST_NAME,username:USERNAME});
+            if(gift.success){homeData.premium=true;homeData.days_remaining=gift.free_days;updateHeader(homeData);showToast('🎁 '+gift.free_days+' gün ücretsiz premium!','info');}
+        }
+        renderHome(d);
+        buildNavBtns('home-nav-btns',{isHome:true,isPremium:d.premium,hasBack:false});
+    }catch(e){document.getElementById('home-scroll').innerHTML='<div class="loader"><span>❌ Yüklenemedi. Yenileyin.</span></div>';}
+}
+
+function updateHeader(d){
+    document.getElementById('user-greeting').textContent='Merhaba, '+FIRST_NAME+' 👋';
+    const pill=document.getElementById('header-pill');
+    if(d.premium){pill.className='prem-pill on';pill.textContent='⭐ '+d.days_remaining+'g';}else{pill.className='prem-pill off';pill.textContent='🔒 Ücretsiz';}
+}
+
+function gc(i){return 'g'+(i%8);}
+function esc(s){return s.replace(/'/g,"\\'").replace(/"/g,'\\"');}
+
+var _allVideosCache=[];
+function renderHome(d){
+    if(d.all_videos)_allVideosCache=d.all_videos;
+    const topCats=d.categories.filter(c=>!c.parent_id);
+    let html='<div class="hero"><div class="hero-badge">🎬 HD Kalite</div><h2>En İyi İçerikleri <span>Keşfet</span></h2><p>Filmler, diziler ve daha fazlası — tek yerde</p><div class="hero-stats"><div class="hero-stat"><div class="val">'+d.total_videos+'</div><div class="lbl">Video</div></div><div class="hero-stat"><div class="val">'+topCats.length+'</div><div class="lbl">Kategori</div></div></div></div>'
+        +'<div style="padding:0 14px 10px"><div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px 13px"><span style="font-size:16px">🔍</span><input id="search-input" type="search" placeholder="Video ara..." oninput="doSearch(this.value)" style="background:none;border:none;outline:none;color:#fff;font-size:14px;flex:1;min-width:0" autocomplete="off" autocorrect="off" spellcheck="false"></div></div>'
+        +'<div id="search-results" style="display:none;padding:0 14px 10px"></div>';
+    if(d.premium){html+='<div class="prem-card on"><div class="pc-body"><div class="pc-row"><div class="pc-icon">👑</div><div class="pc-info"><h3>Premium Aktif</h3><p>Sınırsız HD içerik erişimi</p></div><div class="pc-days">'+d.days_remaining+'<span> gün</span></div></div></div></div>';}
+    else{html+='<div class="prem-card off"><div class="pc-body"><div class="pc-row"><div class="pc-icon">🔒</div><div class="pc-info"><h3>Premium Değil</h3><p>İçeriklere erişmek için premium al</p></div></div><button class="up-btn" style="margin-top:12px" onclick="goPremium()">⭐ Premium Ol</button></div></div>';}
+    if(topCats.length){html+='<div class="section"><div class="sec-hd"><h3>📂 Kategoriler</h3><span>'+d.total_videos+' içerik</span></div><div class="cat-grid">';topCats.forEach((cat,i)=>{html+='<div class="cat-card" onclick="openCat(\''+esc(cat.slug)+'\',\''+esc(cat.label)+'\','+cat.count+',\'home\')"><div class="cat-bg '+gc(i)+'">'+cat.emoji+'</div><div class="cat-foot"><div class="name">'+cat.label+'</div><div class="cnt">'+cat.count+' video'+(cat.has_children?' · <span class="sub-badge">Alt</span>':'')+'</div></div></div>';});html+='</div></div>';}
+    else{html+='<div class="section"><div class="empty-state"><div class="ei">🎬</div><h3>İçerik Yok</h3><p>Yakında eklenecek</p></div></div>';}
+    html+='<div class="section" id="ref-section"><div class="sec-hd"><h3>🔗 Arkadaşını Davet Et</h3></div><div id="ref-card" style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(37,99,235,.1));border:1px solid rgba(124,58,237,.25);border-radius:14px;padding:14px"><div style="font-size:12px;color:rgba(255,255,255,.55);line-height:1.7;margin-bottom:10px">👤 Davet ettiğin kişi katılırsa <b style="color:#a78bfa">+1 gün</b> kazan<br>💳 Davet ettiğin kişi paket alırsa <b style="color:#34d399">paketin yarısı kadar</b> gün kazan</div><div id="ref-stats" style="display:flex;gap:12px;margin-bottom:12px"><div style="flex:1;background:rgba(0,0,0,.2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:#a78bfa" id="ref-count">—</div><div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:2px">Davet</div></div><div style="flex:1;background:rgba(0,0,0,.2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:#34d399" id="ref-days">—</div><div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:2px">Gün Kazanıldı</div></div></div><div id="ref-link-box" style="background:rgba(0,0,0,.25);border-radius:10px;padding:10px 12px;font-size:11px;color:rgba(255,255,255,.5);word-break:break-all;margin-bottom:10px">Yükleniyor...</div><button onclick="copyRefLink()" style="width:100%;padding:12px;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer">📋 Davet Linkini Kopyala</button></div></div>';
+    document.getElementById('home-scroll').innerHTML=html;
+    loadReferral();
+}
+var _refLink='';
+async function loadReferral(){
+    if(!USER_ID)return;
+    var r=await api('/user/referral?user_id='+USER_ID);
+    if(!r.success)return;
+    _refLink=r.link||'';
+    document.getElementById('ref-count').textContent=r.total_referred||0;
+    document.getElementById('ref-days').textContent=(r.join_rewards||0)+(r.purchase_rewards||0);
+    document.getElementById('ref-link-box').textContent=_refLink||'—';
+}
+function copyRefLink(){
+    if(!_refLink){showToast('Link yükleniyor...','err');return;}
+    if(navigator.clipboard){navigator.clipboard.writeText(_refLink).then(function(){showToast('✅ Link kopyalandı!');}).catch(function(){fallbackCopy(_refLink);});}
+    else fallbackCopy(_refLink);
+}
+function fallbackCopy(txt){var ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');showToast('✅ Link kopyalandı!');}catch(e){showToast('❌ Kopyalanamadı','err');}document.body.removeChild(ta);}
+
+async function doSearch(q){
+    var q2=q.trim();
+    var box=document.getElementById('search-results');
+    if(!q2){box.style.display='none';box.innerHTML='';return;}
+    // Yükle
+    if(!_allVideosCache.length){
+        var d2=await api('/user/videos?user_id='+(USER_ID||0));
+        _allVideosCache=d2.videos||[];
+    }
+    var lq=q2.toLowerCase();
+    var hits=_allVideosCache.filter(function(v){return (v.title||'').toLowerCase().indexOf(lq)>=0;});
+    if(!hits.length){box.innerHTML='<div class="empty-state" style="padding:20px"><div class="ei">🔎</div><p>Sonuç bulunamadı</p></div>';box.style.display='block';return;}
+    box.innerHTML='<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">'+hits.length+' Sonuç</div>'
+        +hits.slice(0,30).map(function(v){
+            return '<div onclick="openVideo('+v.id+',\''+esc(v.title||'')+'\',\''+(v.category||'')+'\',\'\')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,.05);border-radius:10px;margin-bottom:6px;cursor:pointer">'
+                +(v.thumb_file_id?'<img src="/api/thumb/'+v.id+'" style="width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0" onerror="this.style.display=\'none\'">':'<div style="width:48px;height:48px;border-radius:8px;background:rgba(124,58,237,.15);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🎬</div>')
+                +'<div style="min-width:0"><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(v.title||'(Başlıksız)')+'</div><div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px">'+(v.category||'Kategorisiz')+'</div></div></div>';
+        }).join('');
+    box.style.display='block';
+}
+function goHome(pushH){showPage('home',!!pushH);setNav('home');if(!homeData)loadHome();}
+function goCats(){showPage('cat',true);setNav('cats');document.getElementById('cat-title').textContent='Tüm Kategoriler';document.getElementById('cat-badge').textContent='Seçin';document.getElementById('cat-back-btn').onclick=function(){goHome();};currentCatSlug='';if(!homeData){loadHome();return;}const topCats=homeData.categories.filter(c=>!c.parent_id);let html='<div class="subcat-list">';topCats.forEach(function(cat,i){html+='<div class="subcat-item" onclick="openCat(\''+esc(cat.slug)+'\',\''+esc(cat.label)+'\','+cat.count+',\'cats\')"><div class="subcat-emoji">'+cat.emoji+'</div><div class="subcat-info"><div class="nm">'+cat.label+'</div><div class="cn">'+cat.count+' video'+(cat.has_children?' · Alt kategoriler var':'')+'</div></div><div class="subcat-arrow">›</div></div>';});html+='</div>';document.getElementById('cat-scroll').innerHTML=html;buildNavBtns('cat-nav-btns',{isHome:false,isPremium:homeData&&homeData.premium,hasBack:false});}
+function goBack(){if(navStack.length>0){const prev=navStack.pop();showPage(prev,false);if(prev==='home')setNav('home');if(prev==='premium'){setNav('prem');renderPremium();}if(prev==='cat')setNav('cats');}else goHome();}
+function goPremium(){showPage('premium',true);setNav('prem');renderPremium();buildNavBtns('prem-nav-btns',{isHome:false,isPremium:homeData&&homeData.premium,hasBack:navStack.length>0,backFn:'goBack()'});}
+
+async function openCat(slug,label,count,fromNav){
+    currentCatSlug=slug;showPage('cat',true);setNav('cats');document.getElementById('cat-title').textContent=label;document.getElementById('cat-badge').textContent=count+' içerik';document.getElementById('cat-back-btn').onclick=function(){goBack();};document.getElementById('cat-scroll').innerHTML='<div class="loader"><div class="spinner"></div></div>';
+    try{
+        const d=await api('/user/videos?user_id='+USER_ID+'&category='+slug);
+        if(d.type==='subcategories'){
+            document.getElementById('cat-badge').textContent=d.subcategories.length+' alt kategori';
+            let html='<div class="subcat-list">';d.subcategories.forEach(function(sub){html+='<div class="subcat-item" onclick="openCat(\''+esc(sub.slug)+'\',\''+esc(sub.label)+'\','+sub.count+',\'cat\')"><div class="subcat-emoji">'+sub.emoji+'</div><div class="subcat-info"><div class="nm">'+sub.label+'</div><div class="cn">'+sub.count+' video</div></div><div class="subcat-arrow">›</div></div>';});html+='</div>';document.getElementById('cat-scroll').innerHTML=html;
+        }else{
+            const videos=d.videos||[],premium=d.premium;
+            document.getElementById('cat-badge').textContent=videos.length+' video';
+            if(!videos.length){document.getElementById('cat-scroll').innerHTML='<div class="empty-state"><div class="ei">🎬</div><h3>Video Yok</h3><p>Yakında eklenecek</p></div>';}
+            else{
+                let html='';
+                if(!premium){const defPkg=homeData&&homeData.packages?homeData.packages[1]||homeData.packages[0]:null;html+='<div class="lock-banner"><h4>🔒 Premium Gerekli</h4><p>Bu içeriklere erişmek için premium üyelik gereklidir'+(defPkg?' (⭐ '+defPkg.stars+' Stars)':'')+'.</p><button class="up-btn" onclick="goPremium()">⭐ Premium Ol</button></div>';}
+                html+='<div class="video-list">';videos.forEach(function(v,i){var locked=v.locked;var tUrl=v.thumb?'/api/thumb/'+v.id+'?user_id='+USER_ID:'';html+='<div class="vid-item '+(locked?'locked':'')+'" onclick="onVideoClick('+v.id+',\''+esc(v.title)+'\','+(locked?'true':'false')+')">'+(tUrl?'<img class="vid-thumb" src="'+tUrl+'" alt="">':'<div class="vid-num '+(locked?'lk':'')+'">'+(locked?'\ud83d\udd12':(i+1))+'</div>')+'<div class="vid-info"><div class="vt">'+v.title+'</div><div class="vs">'+(locked?'Premium gerekli':'\u25b6 Oynat')+'</div></div><div class="vid-play '+(locked?'lk':'go')+'">'+(locked?'\ud83d\udd12':'\u25b6')+'</div></div>';});html+='</div>';document.getElementById('cat-scroll').innerHTML=html;
+            }
+        }
+        buildNavBtns('cat-nav-btns',{isHome:false,isPremium:homeData&&homeData.premium,hasBack:true,backFn:'goBack()'});
+    }catch(e){document.getElementById('cat-scroll').innerHTML='<div class="empty-state"><div class="ei">❌</div><h3>Hata</h3><p>Yüklenemedi</p></div>';}
+}
+
+function onVideoClick(id,title,locked){if(locked){goPremium();return;}sendVideo(id,title);}
+
+function setSendState(icon,title,sub,showClose,spinnerVisible){
+    document.getElementById('send-icon').textContent=icon;
+    document.getElementById('send-title').textContent=title;
+    document.getElementById('send-sub').textContent=sub;
+    document.getElementById('send-close-btn').style.display=showClose?'block':'none';
+    document.getElementById('send-spinner').style.display=spinnerVisible?'block':'none';
+}
+
+function sendVideo(id,title){
+    var overlay=document.getElementById('send-overlay');
+    overlay.classList.add('show');
+    setSendState('⏳','Video Gönderiliyor...','Bot sohbetinize video gönderiyor, lütfen bekleyin.',false,true);
+    fetch('/api/user/send-video/'+id+'?user_id='+USER_ID,{method:'POST',headers:{'Content-Type':'application/json'}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+        if(d.ok){
+            setSendState('✅','Video Gönderildi!','📨 "'+title+'" Telegram sohbetinize gönderildi.\n\n🔒 İndirme korumalı — yalnızca sohbette izleyebilirsiniz.',true,false);
+        } else if(d.premium_required){
+            overlay.classList.remove('show');
+            goPremium();
+        } else {
+            setSendState('❌','Gönderilemedi',d.error||'Bir hata oluştu. Tekrar deneyin.',true,false);
+        }
+    })
+    .catch(function(){
+        setSendState('❌','Bağlantı Hatası','Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edin.',true,false);
+    });
+}
+
+function closeSendOverlay(){
+    document.getElementById('send-overlay').classList.remove('show');
+}
+
+function renderPremium(){
+    const d=homeData,pkgs=d&&d.packages?d.packages:[];
+    let pkgsHtml='';
+    pkgs.forEach(function(pkg,i){
+        var perDay=(pkg.stars/pkg.days).toFixed(1),isFeat=i===1||pkgs.length===1;
+        pkgsHtml+='<div class="pkg-item '+(isFeat?'featured':'')+'" onclick="buyPkg('+pkg.id+',\''+esc(pkg.name)+'\','+pkg.stars+','+pkg.days+')">'+(isFeat?'<div class="pop-badge">🔥 Popüler</div>':'')+'<div class="pkg-row"><div class="pkg-stars-big">⭐ '+pkg.stars+'</div><div class="pkg-meta"><div class="pn">'+pkg.name+'</div><div class="pd">'+pkg.days+' gün · Günlük '+perDay+' ⭐</div></div><button class="pkg-buy" onclick="event.stopPropagation();buyPkg('+pkg.id+',\''+esc(pkg.name)+'\','+pkg.stars+','+pkg.days+')">Satın Al</button></div></div>';
+    });
+    document.getElementById('prem-scroll').innerHTML='<div class="prem-hero"><div class="crown">🔥</div><h2>Elited Vip Premium</h2><p>En sıcak içerikler, sansürsüz erişim</p></div><div class="feat-list"><div class="feat-item"><div class="feat-icon">🔞</div><div class="feat-info"><div class="ft">Sansürsüz Arşiv</div><div class="fd">Binlerce özel video, kısıtlama yok</div></div></div><div class="feat-item"><div class="feat-icon">🔒</div><div class="feat-info"><div class="ft">Gizli & Güvenli</div><div class="fd">Tüm içerikler indirme korumalı, sadece sana özel</div></div></div><div class="feat-item"><div class="feat-icon">⚡</div><div class="feat-info"><div class="ft">Anında Erişim</div><div class="fd">Ödeme yapar yapmaz premium aktif, bekleme yok</div></div></div><div class="feat-item"><div class="feat-icon">🆕</div><div class="feat-info"><div class="ft">Sürekli Yeni İçerik</div><div class="fd">Her gün yeni videolar ekleniyor</div></div></div></div><div class="pkgs-section"><h3>Paket Seçin</h3><div class="pkg-cards">'+pkgsHtml+'</div></div><div style="padding:14px;font-size:11px;color:var(--muted);text-align:center;line-height:1.6">⭐ Stars ile öde, premium anında aktif olur.<br>Yeni üyeler '+(d&&d.free_days?d.free_days:3)+' gün ücretsiz premium alır 🎁</div>';
+}
+
+async function buyPkg(pkgId,name,stars,days){
+    if(!USER_ID){showToast('Telegram üzerinden açın','err');return;}
+    showToast('⏳ Ödeme penceresi açılıyor...','info');
+    try{
+        const r=await apiPost('/user/create-invoice',{user_id:USER_ID,package_id:pkgId});
+        if(!r.ok){showToast('❌ '+(r.error||'Fatura oluşturulamadı'),'err');return;}
+        // Telegram'ın native Stars ödeme penceresini aç
+        tg.openInvoice(r.invoice_link,function(status){
+            if(status==='paid'){
+                showToast('✅ Ödeme alındı! Premium aktif edildi.','info');
+                // Sayfayı yenile (premium durumunu güncelle)
+                setTimeout(function(){homeData=null;loadHome();},1500);
+            } else if(status==='cancelled'){
+                showToast('Ödeme iptal edildi.','err');
+            } else if(status==='failed'){
+                showToast('❌ Ödeme başarısız. Tekrar deneyin.','err');
+            }
+        });
+    }catch(e){
+        showToast('❌ Bağlantı hatası','err');
+    }
+}
+
+function goRef(){showPage('ref',true);setNav('ref');buildNavBtns('ref-nav-btns',{isHome:false,isPremium:homeData&&homeData.premium,hasBack:navStack.length>0,backFn:'goBack()'});loadReferralPage();}
+async function loadReferralPage(){
+    if(!USER_ID)return;
+    var r=await api('/user/referral?user_id='+USER_ID);
+    if(!r.success)return;
+    _refLink=r.link||'';
+    var cnt=r.total_referred||0;var days=(r.join_rewards||0)+(r.purchase_rewards||0);
+    document.getElementById('ref-count2').textContent=cnt;
+    document.getElementById('ref-days2').textContent=days;
+    document.getElementById('ref-link-box2').textContent=_refLink||'—';
+    var c1=document.getElementById('ref-count');var d1=document.getElementById('ref-days');var lb=document.getElementById('ref-link-box');
+    if(c1)c1.textContent=cnt;if(d1)d1.textContent=days;if(lb)lb.textContent=_refLink||'—';
+}
+var _destekPoll=null;
+function goDestek(){showPage('destek',true);setNav('destek');buildNavBtns('destek-nav-btns',{isHome:false,isPremium:homeData&&homeData.premium,hasBack:navStack.length>0,backFn:'goBack()'});loadDestekChat();if(_destekPoll)clearInterval(_destekPoll);_destekPoll=setInterval(loadDestekChat,8000);}
+function stopDestekPoll(){if(_destekPoll){clearInterval(_destekPoll);_destekPoll=null;}}
+function destekEsc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+async function loadDestekChat(){
+    if(!USER_ID)return;
+    var r=await api('/user/support-history?user_id='+USER_ID);
+    var msgs=r.messages||[];
+    var el=document.getElementById('destek-chat-msgs');
+    if(!msgs.length){el.innerHTML='<div style="text-align:center;padding:24px;color:rgba(255,255,255,.3);font-size:13px">💬 Henüz mesaj yok.<br>Aşağıdan ilk mesajınızı gönderin.</div>';return;}
+    el.innerHTML=msgs.map(function(m){
+        var isUser=m.sender==='user';
+        var bg=isUser?'linear-gradient(135deg,#7c3aed,#2563eb)':'rgba(255,255,255,.08)';
+        var align=isUser?'flex-end':'flex-start';
+        var mxw='78%';
+        var time=m.sent_at?m.sent_at.substring(11,16):'';
+        return '<div style="display:flex;justify-content:'+align+'"><div style="background:'+bg+';border-radius:'+(isUser?'14px 14px 4px 14px':'14px 14px 14px 4px')+';padding:10px 13px;max-width:'+mxw+';font-size:13px;line-height:1.55;word-break:break-word">'
+            +destekEsc(m.message)+'<div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:4px;text-align:right">'+time+'</div></div></div>';
+    }).join('');
+    var sc=document.getElementById('destek-chat-scroll');
+    sc.scrollTop=sc.scrollHeight;
+}
+async function sendDestek(){
+    var inp=document.getElementById('destek-msg');
+    var msg=inp.value.trim();
+    if(!msg){showToast('Mesaj boş olamaz','err');return;}
+    if(!USER_ID){showToast('Kullanıcı kimliği alınamadı','err');return;}
+    var btn=document.getElementById('destek-send-btn');
+    btn.disabled=true;
+    var r=await apiPost('/user/support',{user_id:USER_ID,message:msg});
+    btn.disabled=false;
+    if(r.success){inp.value='';loadDestekChat();showToast('✅ Mesaj gönderildi!');}
+    else showToast('❌ '+(r.error||'Hata'),'err');
+}
+var startPage=new URLSearchParams(location.search).get('page');
+loadHome().then(function(){if(startPage==='premium')goPremium();if(startPage==='destek')goDestek();});
+</script>
+</body>
+</html>
