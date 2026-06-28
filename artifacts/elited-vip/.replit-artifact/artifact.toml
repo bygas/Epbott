@@ -1,0 +1,21 @@
+kind = "web"
+previewPath = "/"
+title = "Elited Vip"
+version = "1.0.0"
+id = "artifacts/elited-vip"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 5000
+
+[services.development]
+run = "cd artifacts/elited-vip && python main.py"
+
+[services.env]
+PORT = "5000"
