@@ -1217,6 +1217,22 @@ def yanit_cmd(update,context):
         update.message.reply_text(f"✅ Yanıt gönderildi → {uid}")
     except Exception as e:update.message.reply_text(f"❌ Hata: {e}")
 
+@app.route('/ping')
+def ping():
+    return jsonify({'ok':True,'status':'alive'})
+
+def keep_alive_loop():
+    import time
+    port=int(os.environ.get('PORT',5000))
+    url=f'http://127.0.0.1:{port}/ping'
+    while True:
+        time.sleep(270)
+        try:
+            req_lib.get(url,timeout=10)
+            logger.info('[keep-alive] ping OK')
+        except Exception as e:
+            logger.warning(f'[keep-alive] ping hatasi: {e}')
+
 def run_flask():
     port=int(os.environ.get('PORT',5000))
     app.run(host='0.0.0.0',port=port,debug=False,use_reloader=False)
@@ -1225,6 +1241,8 @@ def main():
     global bot_instance
     threading.Thread(target=run_flask,daemon=True).start()
     logger.info("Flask port 5000'de baslatildi.")
+    threading.Thread(target=keep_alive_loop,daemon=True).start()
+    logger.info("[keep-alive] thread baslatildi (her 4.5 dakikada ping)")
     updater=Updater(TOKEN,use_context=True)
     bot_instance=updater.bot
     global BOT_USERNAME
