@@ -1217,7 +1217,9 @@ def yanit_cmd(update,context):
         update.message.reply_text(f"✅ Yanıt gönderildi → {uid}")
     except Exception as e:update.message.reply_text(f"❌ Hata: {e}")
 
-def run_flask():app.run(host='0.0.0.0',port=5000,debug=False,use_reloader=False)
+def run_flask():
+    port=int(os.environ.get('PORT',5000))
+    app.run(host='0.0.0.0',port=port,debug=False,use_reloader=False)
 
 def main():
     global bot_instance
@@ -1245,14 +1247,8 @@ def main():
     from telegram.ext import PreCheckoutQueryHandler
     dp.add_handler(PreCheckoutQueryHandler(pre_checkout))
     dp.add_handler(MessageHandler(Filters.successful_payment,successful_payment))
-    IS_PRODUCTION = os.environ.get('REPLIT_DEPLOYMENT','') == '1'
-    if IS_PRODUCTION:
-        logger.info(f"{BOT_NAME} baslatiliyor... [PRODUCTION - polling aktif]")
-        updater.start_polling()
-        updater.idle()
-    else:
-        logger.info(f"{BOT_NAME} Flask'ta calisiyor [DEV - polling devre disi, production cakismasin]")
-        import time
-        while True:time.sleep(60)
+    logger.info(f"{BOT_NAME} baslatiliyor... [polling aktif]")
+    updater.start_polling()
+    updater.idle()
 
 if __name__=='__main__':main()
