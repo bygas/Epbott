@@ -15,7 +15,7 @@ paths = [ "/" ]
 localPort = 5000
 
 [services.development]
-run = "cd artifacts/elited-vip && python main.py"
+run = "cd /home/runner/workspace/artifacts/elited-vip && python main.py"
 
 [services.env]
 PORT = "5000"

@@ -9,28 +9,6 @@ args = ["pnpm", "store", "prune"]
 env = { "CI" = "true" }
 
 [workflows]
-runButton = "Project"
-
-[[workflows.workflow]]
-name = "Project"
-mode = "parallel"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Elited Vip Bot"
-
-[[workflows.workflow]]
-name = "Elited Vip Bot"
-author = "agent"
-
-[workflows.workflow.metadata]
-outputType = "webview"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd artifacts/elited-vip && python main.py"
-waitForPort = 5000
 
 [agent]
 stack = "PNPM_WORKSPACE"
