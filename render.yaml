@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: epbot
+    runtime: python
+    buildCommand: cd Epbott/artifacts/elited-vip && pip install -r requirements.txt
+    startCommand: cd Epbott/artifacts/elited-vip && python main.py
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: ADMIN_ID
+        sync: false
+      - key: PORT
+        value: 10000
