@@ -66,6 +66,7 @@ for sql in[
 "CREATE TABLE IF NOT EXISTS support_chat (id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER,sender TEXT,message TEXT,sent_at TEXT)",
 "CREATE TABLE IF NOT EXISTS referrals (id INTEGER PRIMARY KEY AUTOINCREMENT,referrer_id INTEGER,referred_id INTEGER UNIQUE,joined_at TEXT,join_rewarded INTEGER DEFAULT 0,purchase_rewarded INTEGER DEFAULT 0)",
 "CREATE TABLE IF NOT EXISTS support_forward_map (admin_msg_id INTEGER PRIMARY KEY, user_id INTEGER, user_name TEXT, created_at TEXT)",
+"CREATE TABLE IF NOT EXISTS stars_payments_log (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, stars INTEGER, days INTEGER, package_name TEXT, paid_at TEXT)",
 ]:
     c.execute(sql)
 
@@ -77,6 +78,8 @@ for mig in[
     "ALTER TABLE videos ADD COLUMN thumb_file_id TEXT",
     "ALTER TABLE users ADD COLUMN first_name TEXT",
     "ALTER TABLE users ADD COLUMN username TEXT",
+    "ALTER TABLE users ADD COLUMN last_seen TEXT",
+    "ALTER TABLE users ADD COLUMN joined_at TEXT",
 ]:
     try:c.execute(mig);conn.commit()
     except:pass
@@ -350,9 +353,19 @@ def api_send_video(video_id):
 def save_user_info(user_id,first_name=None,username=None):
     try:
         db,cur=get_db()
-        cur.execute("INSERT OR IGNORE INTO users (user_id) VALUES (?)",(user_id,))
+        now=datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        cur.execute("INSERT OR IGNORE INTO users (user_id,joined_at) VALUES (?,?)",(user_id,now))
         if first_name:cur.execute("UPDATE users SET first_name=? WHERE user_id=?",(first_name,user_id))
         if username:cur.execute("UPDATE users SET username=? WHERE user_id=?",(username,user_id))
+        cur.execute("UPDATE users SET last_seen=? WHERE user_id=?",(now,user_id))
+        db.commit()
+    except:pass
+
+def update_last_seen(user_id):
+    try:
+        db,cur=get_db()
+        now=datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        cur.execute("UPDATE users SET last_seen=? WHERE user_id=?",(now,user_id))
         db.commit()
     except:pass
 
@@ -560,7 +573,10 @@ def api_approve_payment(user_id):
     if not row:return jsonify({'success':False,'error':'\u00d6deme bulunamad\u0131'})
     stars,days,pn=row[0],row[1] or 30,row[2] or 'Premium'
     pd=give_premium(user_id,days)
-    cur.execute("DELETE FROM pending_payments WHERE user_id=?",(user_id,));db.commit()
+    cur.execute("DELETE FROM pending_payments WHERE user_id=?",(user_id,))
+    cur.execute("INSERT INTO stars_payments_log (user_id,stars,days,package_name,paid_at) VALUES (?,?,?,?,?)",
+        (user_id,stars,days,pn,datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+    db.commit()
     try:process_referral_purchase(user_id,days)
     except:pass
     if bot_instance:
@@ -1034,6 +1050,7 @@ def handle_callback(update,context):
     uid=q.from_user.id
     data=q.data
     q.answer()
+    update_last_seen(uid)
 
     # Ana Menü
     if data=="menu_main":
@@ -1625,7 +1642,176 @@ def successful_payment(update,context):
             reply_markup=telegram.InlineKeyboardMarkup(kb)
         )
     except:pass
+    # Stars log kaydet
+    try:
+        db2,cur2=get_db()
+        cur2.execute("INSERT INTO stars_payments_log (user_id,stars,days,package_name,paid_at) VALUES (?,?,?,?,?)",
+            (uid,stars,days,pname,datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+        db2.commit()
+    except:pass
     logger.info(f"Premium verildi (Stars odeme): user={uid} pkg={pname} days={days} stars={stars}")
+
+def istatistik_cmd(update,context):
+    """Admin için kapsamlı istatistik raporu."""
+    if update.effective_user.id!=ADMIN_ID:
+        return update.message.reply_text("❌ Sadece admin.")
+    db,cur=get_db()
+    now=datetime.datetime.now()
+    now_str=now.strftime('%Y-%m-%d %H:%M:%S')
+    today=now.strftime('%Y-%m-%d')
+    week_ago=(now-datetime.timedelta(days=7)).strftime('%Y-%m-%d')
+    month_ago=(now-datetime.timedelta(days=30)).strftime('%Y-%m-%d')
+    online_cutoff=(now-datetime.timedelta(minutes=5)).strftime('%Y-%m-%d %H:%M:%S')
+
+    # ── KULLANICI ──
+    cur.execute("SELECT COUNT(*) FROM users"); total_users=cur.fetchone()[0]
+    cur.execute("SELECT COUNT(*) FROM users WHERE last_seen >= ?", (online_cutoff,)); online=cur.fetchone()[0]
+    cur.execute("SELECT COUNT(*) FROM users WHERE premium_date > ?", (today,)); active_prem=cur.fetchone()[0]
+    cur.execute("SELECT COUNT(*) FROM users WHERE joined_at >= ?", (today,)); today_new=cur.fetchone()[0]
+    cur.execute("SELECT COUNT(*) FROM users WHERE joined_at >= ?", (week_ago,)); week_new=cur.fetchone()[0]
+    cur.execute("SELECT COUNT(*) FROM users WHERE joined_at >= ?", (month_ago,)); month_new=cur.fetchone()[0]
+
+    # ── VİDEO / İZLENME ──
+    cur.execute("SELECT COUNT(*) FROM videos"); total_videos=cur.fetchone()[0]
+    cur.execute("SELECT COUNT(*) FROM video_views"); total_views=cur.fetchone()[0]
+    cur.execute("SELECT COUNT(*) FROM video_views WHERE viewed_at >= ?", (today,)); today_views=cur.fetchone()[0]
+    cur.execute("SELECT COUNT(*) FROM video_views WHERE viewed_at >= ?", (week_ago,)); week_views=cur.fetchone()[0]
+    cur.execute("SELECT COUNT(DISTINCT user_id) FROM video_views"); unique_viewers=cur.fetchone()[0]
+    cur.execute("SELECT COUNT(*) FROM categories"); total_cats=cur.fetchone()[0]
+
+    # ── STARS GELİR ──
+    cur.execute("SELECT COALESCE(SUM(stars),0) FROM stars_payments_log"); total_stars=cur.fetchone()[0]
+    cur.execute("SELECT COALESCE(SUM(stars),0) FROM stars_payments_log WHERE paid_at >= ?", (month_ago,)); month_stars=cur.fetchone()[0]
+    cur.execute("SELECT COUNT(*) FROM stars_payments_log"); total_sales=cur.fetchone()[0]
+    cur.execute("SELECT COUNT(*) FROM stars_payments_log WHERE paid_at >= ?", (month_ago,)); month_sales=cur.fetchone()[0]
+    cur.execute("SELECT COUNT(*) FROM pending_payments"); pending_pay=cur.fetchone()[0]
+
+    # ── REFERRAL ──
+    cur.execute("SELECT COUNT(*) FROM referrals"); total_refs=cur.fetchone()[0]
+    cur.execute("SELECT COUNT(*) FROM referrals WHERE joined_at >= ?", (month_ago,)); month_refs=cur.fetchone()[0]
+
+    # ── DESTEK ──
+    cur.execute("SELECT COUNT(DISTINCT user_id) FROM support_chat WHERE sent_at >= ?", (today,)); today_support=cur.fetchone()[0]
+    cur.execute("SELECT COUNT(DISTINCT user_id) FROM support_chat WHERE sender='user'"); open_support=cur.fetchone()[0]
+
+    txt=(
+        f"📊 *{BOT_NAME} — Detaylı İstatistik*\n"
+        f"🕐 {now.strftime('%d.%m.%Y %H:%M')}\n\n"
+
+        f"━━━━━━ 👥 KULLANICILAR ━━━━━━\n"
+        f"👥 Toplam üye: *{total_users:,}*\n"
+        f"🟢 Şu an aktif (5dk): *{online}*\n"
+        f"⭐ Aktif premium: *{active_prem}*\n"
+        f"📅 Bugün katılan: *{today_new}*\n"
+        f"📆 Bu hafta katılan: *{week_new}*\n"
+        f"🗓 Bu ay katılan: *{month_new}*\n\n"
+
+        f"━━━━━━ 🎬 VİDEO & İZLENME ━━━━━━\n"
+        f"🎬 Toplam video: *{total_videos}*\n"
+        f"📁 Toplam kategori: *{total_cats}*\n"
+        f"👁 Toplam izlenme: *{total_views:,}*\n"
+        f"🔥 Bugün izlenen: *{today_views}*\n"
+        f"📈 Bu hafta izlenen: *{week_views}*\n"
+        f"👤 Benzersiz izleyici: *{unique_viewers}*\n\n"
+
+        f"━━━━━━ 💰 STARS GELİR ━━━━━━\n"
+        f"⭐ Toplam Stars: *{total_stars:,}*\n"
+        f"📦 Toplam satış: *{total_sales}*\n"
+        f"📅 Bu ay Stars: *{month_stars:,}*\n"
+        f"🛒 Bu ay satış: *{month_sales}*\n"
+        f"⏳ Bekleyen ödeme: *{pending_pay}*\n\n"
+
+        f"━━━━━━ 🔗 REFERRAL ━━━━━━\n"
+        f"🔗 Toplam referral: *{total_refs}*\n"
+        f"📅 Bu ay referral: *{month_refs}*\n\n"
+
+        f"━━━━━━ 💬 DESTEK ━━━━━━\n"
+        f"📩 Bugün mesaj atan: *{today_support}*\n"
+        f"🗂 Toplam destek kullanıcısı: *{open_support}*\n\n"
+
+        f"📌 /top → En çok izlenen videolar & kategoriler"
+    )
+    kb=[[telegram.InlineKeyboardButton("🔄 Yenile",callback_data="admin_stat_refresh")]]
+    update.message.reply_text(txt, parse_mode='Markdown', reply_markup=telegram.InlineKeyboardMarkup(kb))
+
+def top_cmd(update,context):
+    """En çok izlenen videolar ve kategoriler."""
+    if update.effective_user.id!=ADMIN_ID:
+        return update.message.reply_text("❌ Sadece admin.")
+    db,cur=get_db()
+
+    # En çok izlenen 10 video (title ile join)
+    cur.execute("""
+        SELECT v.title, COUNT(vv.id) as cnt
+        FROM video_views vv
+        LEFT JOIN videos v ON v.id=vv.video_id
+        GROUP BY vv.video_id
+        ORDER BY cnt DESC
+        LIMIT 10
+    """)
+    top_vids=cur.fetchall()
+
+    # En çok izlenen 10 kategori (label ile join)
+    cur.execute("""
+        SELECT COALESCE(c.emoji,'📁')||' '||COALESCE(c.label, vv.category) as cat_name, COUNT(*) as cnt
+        FROM video_views vv
+        LEFT JOIN categories c ON c.slug=vv.category
+        GROUP BY vv.category
+        ORDER BY cnt DESC
+        LIMIT 10
+    """)
+    top_cats=cur.fetchall()
+
+    # En çok referral yapan 5 kişi
+    cur.execute("""
+        SELECT u.first_name, u.username, COUNT(r.id) as cnt
+        FROM referrals r
+        LEFT JOIN users u ON u.user_id=r.referrer_id
+        GROUP BY r.referrer_id
+        ORDER BY cnt DESC
+        LIMIT 5
+    """)
+    top_refs=cur.fetchall()
+
+    # En çok Stars ödeyen 5 kişi
+    cur.execute("""
+        SELECT u.first_name, u.username, SUM(s.stars) as total
+        FROM stars_payments_log s
+        LEFT JOIN users u ON u.user_id=s.user_id
+        GROUP BY s.user_id
+        ORDER BY total DESC
+        LIMIT 5
+    """)
+    top_payers=cur.fetchall()
+
+    # En aktif 5 kullanıcı (en çok izleyen)
+    cur.execute("""
+        SELECT u.first_name, u.username, COUNT(vv.id) as cnt
+        FROM video_views vv
+        LEFT JOIN users u ON u.user_id=vv.user_id
+        GROUP BY vv.user_id
+        ORDER BY cnt DESC
+        LIMIT 5
+    """)
+    top_active=cur.fetchall()
+
+    def uname(fn,un): return fn or ('@'+un if un else '?')
+
+    vid_lines='\n'.join([f"  {i+1}. {(t or 'Bilinmeyen')[:35]} — *{c}* izl." for i,(t,c) in enumerate(top_vids)]) or '  Veri yok'
+    cat_lines='\n'.join([f"  {i+1}. {n} — *{c}* izl." for i,(n,c) in enumerate(top_cats)]) or '  Veri yok'
+    ref_lines='\n'.join([f"  {i+1}. {uname(fn,un)} — *{c}* kişi" for i,(fn,un,c) in enumerate(top_refs)]) or '  Veri yok'
+    pay_lines='\n'.join([f"  {i+1}. {uname(fn,un)} — *{t}* ⭐" for i,(fn,un,t) in enumerate(top_payers)]) or '  Veri yok'
+    act_lines='\n'.join([f"  {i+1}. {uname(fn,un)} — *{c}* video" for i,(fn,un,c) in enumerate(top_active)]) or '  Veri yok'
+
+    txt=(
+        f"🔥 *{BOT_NAME} — TOP LİSTELER*\n\n"
+        f"━━━━━━ 🎬 EN ÇOK İZLENEN VİDEOLAR ━━━━━━\n{vid_lines}\n\n"
+        f"━━━━━━ 📁 EN ÇOK İZLENEN KATEGORİLER ━━━━━━\n{cat_lines}\n\n"
+        f"━━━━━━ 🏆 EN AKTİF ÜYE ━━━━━━\n{act_lines}\n\n"
+        f"━━━━━━ 🔗 EN ÇOK REFERRAL YAPAN ━━━━━━\n{ref_lines}\n\n"
+        f"━━━━━━ 💰 EN ÇOK STARS ÖDEYEN ━━━━━━\n{pay_lines}"
+    )
+    update.message.reply_text(txt, parse_mode='Markdown')
 
 def handle_user_support_message(update,context):
     """Kullanıcıdan gelen metin mesajını admin'e ilet."""
@@ -1763,6 +1949,8 @@ def main():
     dp.add_handler(CommandHandler('yanit',yanit_cmd))
     dp.add_handler(CommandHandler('duyuru',duyuru_cmd))
     dp.add_handler(CommandHandler('duyuruvip',duyuruvip_cmd))
+    dp.add_handler(CommandHandler('istatistik',istatistik_cmd))
+    dp.add_handler(CommandHandler('top',top_cmd))
     dp.add_handler(ChannelPostHandler(handle_channel_post_any))
     dp.add_handler(MessageHandler(Filters.photo & Filters.chat_type.private,handle_photo))
     dp.add_handler(MessageHandler(Filters.video & Filters.chat_type.private,handle_video))
@@ -1786,6 +1974,8 @@ def main():
         bot_instance.set_my_commands([
             telegram.BotCommand('start','Botu başlat / Ana menü'),
             telegram.BotCommand('menu','📋 Ana menüyü aç'),
+            telegram.BotCommand('istatistik','📊 Gelişmiş istatistik raporu (admin)'),
+            telegram.BotCommand('top','🔥 En çok izlenen video & kategoriler (admin)'),
             telegram.BotCommand('duyuru','📢 Tüm kullanıcılara duyuru gönder (admin)'),
             telegram.BotCommand('duyuruvip','⭐ Sadece premium üyelere duyuru (admin)'),
         ])
