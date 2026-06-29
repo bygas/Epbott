@@ -497,9 +497,28 @@ def api_assign_bundle(bundle_id):
 @app.route('/api/users')
 def api_users():
     db,cur=get_db()
-    cur.execute("SELECT user_id,premium_date,first_name,username FROM users ORDER BY premium_date DESC")
+    cur.execute("SELECT user_id,premium_date,first_name,username,last_seen,joined_at FROM users ORDER BY COALESCE(joined_at,'') DESC")
     now=datetime.datetime.now()
-    return jsonify({'users':[{'user_id':r[0],'premium_date':r[1],'first_name':r[2],'username':r[3],'active':datetime.datetime.strptime(r[1],'%Y-%m-%d')>now if r[1] else False} for r in cur.fetchall()]})
+    users=[]
+    for r in cur.fetchall():
+        try:active=datetime.datetime.strptime(r[1],'%Y-%m-%d')>now if r[1] else False
+        except:active=False
+        users.append({'user_id':r[0],'premium_date':r[1],'first_name':r[2],'username':r[3],'last_seen':r[4],'joined_at':r[5],'active':active})
+    return jsonify({'users':users})
+
+@app.route('/api/user/photo/<int:user_id>')
+def api_user_photo(user_id):
+    """Telegram profil fotoğrafını proxy et."""
+    try:
+        photos=bot_instance.get_user_profile_photos(user_id,limit=1)
+        if not photos or not photos.photos:
+            return '',204
+        file_id=photos.photos[0][-1].file_id
+        f=bot_instance.get_file(file_id)
+        url=f'https://api.telegram.org/file/bot{TOKEN}/{f.file_path}'
+        return redirect(url)
+    except:
+        return '',204
 
 @app.route('/api/users/<int:user_id>')
 def api_user_detail(user_id):
@@ -677,28 +696,47 @@ def api_user_referral():
 def api_gift_all():
     data=request.get_json() or {}
     days=int(data.get('days',30))
+    notify=bool(data.get('notify',True))
     if days<1 or days>3650:return jsonify(success=False,error='Geçersiz gün')
     db,cur=get_db()
-    cur.execute("SELECT user_id FROM users")
+    cur.execute("SELECT user_id,premium_date FROM users")
     users=cur.fetchall()
     now=datetime.datetime.now()
-    count=0
-    for (uid,) in users:
-        cur.execute("SELECT premium_date FROM users WHERE user_id=?",(uid,))
-        row=cur.fetchone()
-        if row and row[0]:
-            try:current=datetime.datetime.strptime(row[0],'%Y-%m-%d')
+    count=0;new_dates={}
+    for (uid,pd) in users:
+        if pd:
+            try:current=datetime.datetime.strptime(pd,'%Y-%m-%d')
             except:current=now
             base=max(current,now)
         else:base=now
         new_date=(base+datetime.timedelta(days=days)).strftime('%Y-%m-%d')
         cur.execute("UPDATE users SET premium_date=? WHERE user_id=?",(new_date,uid))
-        count+=1
+        new_dates[uid]=new_date;count+=1
     db.commit()
-    if bot_instance:
-        try:
-            bot_instance.send_message(ADMIN_ID,f"🎁 *Toplu Hediye Tamamlandı!*\n\n👥 {count} kullanıcıya {days} gün premium eklendi.",parse_mode='Markdown')
-        except:pass
+    # Kullanıcılara bildir (arka planda)
+    if notify and bot_instance:
+        def _notify_all():
+            sent=0;fail=0
+            for uid,nd in new_dates.items():
+                try:
+                    bot_instance.send_message(uid,
+                        f"🎁 *{BOT_NAME} — Hediye Premium!*\n\n"
+                        f"✅ *{days} gün premium* hesabına eklendi!\n"
+                        f"📅 Bitiş: {nd}\n\n"
+                        f"Keyifli izlemeler 🎬",
+                        parse_mode='Markdown',
+                        reply_markup=with_menu([])
+                    )
+                    sent+=1
+                except:fail+=1
+            if bot_instance:
+                try:bot_instance.send_message(ADMIN_ID,f"🎁 *Toplu Hediye Tamamlandı!*\n\n👥 {count} kullanıcı\n✅ Bildirim: {sent}\n❌ Başarısız: {fail}",parse_mode='Markdown')
+                except:pass
+        threading.Thread(target=_notify_all,daemon=True).start()
+    else:
+        if bot_instance:
+            try:bot_instance.send_message(ADMIN_ID,f"🎁 *Toplu Hediye Tamamlandı!*\n\n👥 {count} kullanıcıya {days} gün premium eklendi.",parse_mode='Markdown')
+            except:pass
     return jsonify(success=True,count=count,days=days)
 
 @app.route('/api/broadcast',methods=['POST'])
@@ -1264,6 +1302,55 @@ def handle_callback(update,context):
         )
         kb=with_menu([[telegram.InlineKeyboardButton("📱 Mini App — Destek",web_app=telegram.WebAppInfo(url=WEBAPP_URL+"?page=destek"))]])
         q.edit_message_text(txt,parse_mode='Markdown',reply_markup=kb)
+
+def herkeseprem_cmd(update,context):
+    """Tek komutla tüm kullanıcılara premium ver: /herkeseprem <gün>"""
+    if update.effective_user.id!=ADMIN_ID:return
+    args=context.args
+    days=int(args[0]) if args and args[0].isdigit() else 30
+    if days<1 or days>3650:
+        return update.message.reply_text("❌ Geçersiz gün (1-3650 arası).")
+    # Bilgi ver ve başla
+    db,cur=get_db()
+    cur.execute("SELECT COUNT(*) FROM users");total=cur.fetchone()[0]
+    msg=update.message.reply_text(
+        f"🎁 *Toplu Premium Başlatıldı!*\n\n"
+        f"👥 {total} kullanıcıya *{days} gün* veriliyor...\n"
+        f"📱 Herkes bildirim alacak, lütfen bekleyin.",
+        parse_mode='Markdown'
+    )
+    now=datetime.datetime.now()
+    cur.execute("SELECT user_id,premium_date FROM users")
+    users=cur.fetchall()
+    sent=0;fail=0;count=0
+    for uid,pd in users:
+        if pd:
+            try:base=max(datetime.datetime.strptime(pd,'%Y-%m-%d'),now)
+            except:base=now
+        else:base=now
+        new_date=(base+datetime.timedelta(days=days)).strftime('%Y-%m-%d')
+        cur.execute("UPDATE users SET premium_date=? WHERE user_id=?",(new_date,uid))
+        count+=1
+        try:
+            bot_instance.send_message(uid,
+                f"🎁 *{BOT_NAME} — Hediye Premium!*\n\n"
+                f"✅ *{days} gün premium* hesabına eklendi!\n"
+                f"📅 Bitiş: {new_date}\n\n"
+                f"Keyifli izlemeler 🎬",
+                parse_mode='Markdown',
+                reply_markup=with_menu([])
+            )
+            sent+=1
+        except:fail+=1
+    db.commit()
+    msg.edit_text(
+        f"✅ *Toplu Premium Tamamlandı!*\n\n"
+        f"👥 Toplam: {count} kullanıcı\n"
+        f"📅 Eklenen: {days} gün\n"
+        f"✅ Bildirim gönderildi: {sent}\n"
+        f"❌ Gönderilemedi: {fail}",
+        parse_mode='Markdown'
+    )
 
 def duyuru_cmd(update,context):
     """Admin duyurusu: /duyuru <mesaj> — tüm kullanıcılara gönderir."""
@@ -1954,6 +2041,7 @@ def main():
     dp.add_handler(CommandHandler('bundle',bundle_cmd))
     dp.add_handler(CommandHandler('donebundle',donebundle_cmd))
     dp.add_handler(CommandHandler('yanit',yanit_cmd))
+    dp.add_handler(CommandHandler('herkeseprem',herkeseprem_cmd))
     dp.add_handler(CommandHandler('duyuru',duyuru_cmd))
     dp.add_handler(CommandHandler('duyuruvip',duyuruvip_cmd))
     dp.add_handler(CommandHandler('istatistik',istatistik_cmd))

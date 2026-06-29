@@ -133,7 +133,19 @@ select.inp option{background:#161630;color:#fff;}
 
 <!-- USERS -->
 <div id="tab-users" class="tab-content active">
-    <div class="sec">Premium Üyeler</div>
+    <div class="card" style="margin-bottom:10px;border:1px solid rgba(124,58,237,.35);background:rgba(124,58,237,.08)"><div class="cb">
+        <div class="ct" style="margin-bottom:4px">🎁 Herkese Premium Hediye Et</div>
+        <div class="cm" style="margin-bottom:8px">Tüm kullanıcılara premium ver + Telegram bildirimi gönder</div>
+        <div class="irow" style="margin-bottom:0">
+            <input class="inp" type="number" id="gift-days-u" placeholder="Gün sayısı" min="1" max="365" value="30" style="margin:0">
+            <button class="btn btn-p" onclick="giftAllUsers()" style="flex:none;padding:0 14px;white-space:nowrap">🎁 Tümüne Hediye</button>
+        </div>
+    </div></div>
+    <div class="divider"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
+        <div class="sec" style="margin:0">Üyeler (<span id="user-count">—</span>)</div>
+        <input class="inp" id="user-search" placeholder="🔍 Ara..." style="margin:0;width:130px;font-size:11px;padding:5px 9px" oninput="filterUsers(this.value)">
+    </div>
     <div id="users-list"><div class="loading">⏳</div></div>
     <div class="divider"></div>
     <div class="sec">Manuel Premium</div>
@@ -348,14 +360,70 @@ async function loadStats(){
 }
 
 // USERS
+var _allUsers=[];
+function fmtDate(s){if(!s)return '—';var d=s.substring(0,10);return d;}
+function fmtSeen(s){
+    if(!s)return '—';
+    var now=new Date();var d=new Date(s.replace(' ','T'));
+    var diff=Math.floor((now-d)/1000);
+    if(diff<60)return diff+'sn önce';
+    if(diff<3600)return Math.floor(diff/60)+'dk önce';
+    if(diff<86400)return Math.floor(diff/3600)+'sa önce';
+    return Math.floor(diff/86400)+'g önce';
+}
+function renderUsers(list){
+    if(!list||!list.length){document.getElementById('users-list').innerHTML='<div class="empty"><div class="ei">👥</div><p>Sonuç yok</p></div>';return;}
+    document.getElementById('users-list').innerHTML=list.map(function(u){
+        var dispName=(u.first_name||'')+(u.username?' @'+u.username:'');
+        var initials=((u.first_name||'?')[0]).toUpperCase();
+        var photoUrl='/api/user/photo/'+u.user_id;
+        return '<div class="card"><div class="cb" style="display:flex;gap:10px;align-items:flex-start">'
+            +'<div style="position:relative;flex-shrink:0">'
+            +'<img src="'+photoUrl+'" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'" style="width:42px;height:42px;border-radius:50%;object-fit:cover">'
+            +'<div style="display:none;width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#2563eb);align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff">'+initials+'</div>'
+            +(u.active?'<div style="position:absolute;bottom:0;right:0;width:12px;height:12px;border-radius:50%;background:#22c55e;border:2px solid #0d0d1a"></div>':'')
+            +'</div>'
+            +'<div style="flex:1;min-width:0">'
+            +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px">'
+            +'<div class="ct" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">'+(dispName||'—')+'</div>'
+            +'<span class="badge '+(u.active?'bg':'br')+'">'+(u.active?'✅':'❌')+'</span>'
+            +'</div>'
+            +'<div class="uid" style="margin-bottom:3px">🆔 '+u.user_id+'</div>'
+            +'<div style="font-size:10px;color:rgba(255,255,255,.32);margin-bottom:3px">📅 Bitiş: '+fmtDate(u.premium_date)+' · Katılım: '+fmtDate(u.joined_at)+'</div>'
+            +'<div style="font-size:10px;color:rgba(255,255,255,.28);margin-bottom:7px">👁 Son görülme: '+fmtSeen(u.last_seen)+'</div>'
+            +'<div class="btn-row">'
+            +'<button class="btn btn-s" style="font-size:10px" onclick="extendP('+u.user_id+')">+30g</button>'
+            +'<button class="btn btn-i" style="font-size:10px" onclick="setManual('+u.user_id+')">✏️ Özel</button>'
+            +'<button class="btn btn-d" style="font-size:10px" onclick="confRevoke('+u.user_id+')">🗑️</button>'
+            +'<button class="btn btn-k" style="font-size:10px" onclick="copyId('+u.user_id+')">📋</button>'
+            +'</div>'
+            +'</div></div></div>';
+    }).join('');
+}
+function filterUsers(q){
+    if(!q){renderUsers(_allUsers);return;}
+    q=q.toLowerCase();
+    renderUsers(_allUsers.filter(function(u){
+        return String(u.user_id).includes(q)||(u.first_name||'').toLowerCase().includes(q)||(u.username||'').toLowerCase().includes(q);
+    }));
+}
+function setManual(uid){document.getElementById('m-uid').value=uid;document.getElementById('m-uid').scrollIntoView({behavior:'smooth'});}
+async function giftAllUsers(){
+    var days=parseInt(document.getElementById('gift-days-u').value)||30;
+    if(days<1){toast('Geçersiz gün!',true);return;}
+    confirm2('🎁 Herkese Premium','Tüm kullanıcılara '+days+' gün premium eklenecek ve herkese Telegram bildirimi gönderilecek. Onaylıyor musunuz?',async function(){
+        toast('⏳ İşleniyor...');
+        var r=await api('/admin/gift-all','POST',{days:days,notify:true});
+        toast(r.success?'🎁 '+r.count+' kullanıcıya '+days+' gün eklendi! Bildirimler gönderiliyor...':'❌ '+(r.error||''),!r.success);
+        if(r.success){loadStats();loadUsers();}
+    });
+}
 async function loadUsers(){
     document.getElementById('users-list').innerHTML='<div class="loading">⏳</div>';
     var d=await api('/users');
-    if(!d.users||!d.users.length){document.getElementById('users-list').innerHTML='<div class="empty"><div class="ei">👥</div><p>Henüz üye yok</p></div>';return;}
-    document.getElementById('users-list').innerHTML=d.users.map(function(u){
-        var dispName=(u.first_name||'')+(u.username?' @'+u.username:'');
-        return '<div class="card"><div class="cb"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px"><div><div class="ct">'+(dispName||'—')+'</div><div class="uid">🆔 '+u.user_id+' · Bitiş: '+(u.premium_date||'—')+'</div></div><span class="badge '+(u.active?'bg':'br')+'">'+(u.active?'✅ Aktif':'❌ Dolmuş')+'</span></div><div class="btn-row"><button class="btn btn-s" onclick="extendP('+u.user_id+')">+30 Gün</button><button class="btn btn-d" onclick="confRevoke('+u.user_id+')">🗑️ Sil</button><button class="btn btn-i" onclick="copyId('+u.user_id+')">📋</button></div></div></div>';
-    }).join('');
+    _allUsers=d.users||[];
+    document.getElementById('user-count').textContent=_allUsers.length;
+    renderUsers(_allUsers);
 }
 async function givePremium(){
     var uid=document.getElementById('m-uid').value,days=document.getElementById('m-days').value||30;
