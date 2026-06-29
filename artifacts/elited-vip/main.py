@@ -913,9 +913,22 @@ def main_menu_kb(uid):
     rows.append([telegram.InlineKeyboardButton(f"🔥 {BOT_NAME}'i Aç (Mini App)",web_app=telegram.WebAppInfo(url=WEBAPP_URL))])
     return telegram.InlineKeyboardMarkup(rows)
 
+def _root_cat_counts():
+    """Root kategori başına toplam video sayısı (alt kategoriler üzerinden)."""
+    db,cur=get_db()
+    cur.execute('''
+        SELECT p.slug,COUNT(v.id)
+        FROM categories p
+        LEFT JOIN categories ch ON ch.parent_id=p.id
+        LEFT JOIN videos v ON v.category=ch.slug
+        WHERE p.parent_id IS NULL
+        GROUP BY p.id
+    ''')
+    return {r[0]:r[1] for r in cur.fetchall()}
+
 def cats_kb(page=0,per_page=8):
-    cats=get_categories()
-    counts=get_video_counts()
+    cats=get_categories()  # root kategoriler
+    counts=_root_cat_counts()
     total=len(cats)
     start_i=page*per_page
     end_i=min(start_i+per_page,total)
@@ -928,7 +941,7 @@ def cats_kb(page=0,per_page=8):
             cnt=counts.get(slug,0)
             row.append(telegram.InlineKeyboardButton(
                 f"{emoji or '📁'} {label} ({cnt})",
-                callback_data=f"cat:{slug}:0"
+                callback_data=f"rootcat:{slug}"
             ))
         rows.append(row)
     nav=[]
@@ -937,6 +950,36 @@ def cats_kb(page=0,per_page=8):
     if nav:rows.append(nav)
     rows.append([telegram.InlineKeyboardButton("🏠 Ana Menü",callback_data="menu_main")])
     return telegram.InlineKeyboardMarkup(rows)
+
+def subcats_kb(root_slug):
+    """Bir root kategorinin alt kategorilerini listeler."""
+    db,cur=get_db()
+    cur.execute("SELECT id FROM categories WHERE slug=?",(root_slug,))
+    row=cur.fetchone()
+    if not row:return None,[]
+    parent_id=row[0]
+    cur.execute("SELECT id,slug,label,emoji FROM categories WHERE parent_id=? ORDER BY label COLLATE NOCASE",(parent_id,))
+    subcats=cur.fetchall()
+    # her alt katin video sayisi
+    cur.execute('''
+        SELECT ch.slug,COUNT(v.id) FROM categories ch
+        LEFT JOIN videos v ON v.category=ch.slug
+        WHERE ch.parent_id=? GROUP BY ch.id
+    ''',(parent_id,))
+    cnts={r[0]:r[1] for r in cur.fetchall()}
+    rows=[]
+    for sc in subcats:
+        _,slug,label,emoji=sc
+        cnt=cnts.get(slug,0)
+        rows.append([telegram.InlineKeyboardButton(
+            f"{emoji or '🎬'} {label} ({cnt} video)",
+            callback_data=f"subcat:{slug}:0"
+        )])
+    rows.append([
+        telegram.InlineKeyboardButton("📁 Kategoriler",callback_data="menu_cats:0"),
+        telegram.InlineKeyboardButton("🏠 Ana Menü",callback_data="menu_main"),
+    ])
+    return telegram.InlineKeyboardMarkup(rows),subcats
 
 def _videos_in_cat(slug,page=0,per_page=6):
     db,cur=get_db()
@@ -951,14 +994,16 @@ def videos_kb(slug,page=0,uid=None,per_page=6):
     videos,total=_videos_in_cat(slug,page,per_page)
     rows=[]
     for vid_id,title in videos:
-        short=title[:28]+"…" if len(title)>30 else title
+        # başlıktan tag'leri temizle
+        clean=title.split('\n')[0].split('#')[0].strip()
+        short=clean[:30]+"…" if len(clean)>32 else clean
         if prem:
             rows.append([telegram.InlineKeyboardButton(f"▶️ {short}",callback_data=f"sendvid:{vid_id}")])
         else:
             rows.append([telegram.InlineKeyboardButton(f"🔒 {short}",callback_data="menu_buy")])
     nav=[]
-    if page>0:nav.append(telegram.InlineKeyboardButton("◀️ Önceki",callback_data=f"cat:{slug}:{page-1}"))
-    if (page+1)*per_page<total:nav.append(telegram.InlineKeyboardButton("Sonraki ▶️",callback_data=f"cat:{slug}:{page+1}"))
+    if page>0:nav.append(telegram.InlineKeyboardButton("◀️ Önceki",callback_data=f"subcat:{slug}:{page-1}"))
+    if (page+1)*per_page<total:nav.append(telegram.InlineKeyboardButton("Sonraki ▶️",callback_data=f"subcat:{slug}:{page+1}"))
     if nav:rows.append(nav)
     rows.append([
         telegram.InlineKeyboardButton("📁 Kategoriler",callback_data="menu_cats:0"),
@@ -1001,29 +1046,65 @@ def handle_callback(update,context):
             reply_markup=cats_kb(page)
         )
 
-    # Kategori içeriği
-    elif data.startswith("cat:"):
+    # Root kategori → alt kategorileri göster
+    elif data.startswith("rootcat:"):
+        root_slug=data.split(":")[1]
+        db,cur=get_db()
+        cur.execute("SELECT label,emoji FROM categories WHERE slug=?",(root_slug,))
+        row=cur.fetchone()
+        label=row[0] if row else root_slug
+        emoji=(row[1] or '📁') if row else '📁'
+        kb,subcats=subcats_kb(root_slug)
+        if not subcats:
+            # Alt kategori yok, direkt video göster
+            kb2,videos,total=videos_kb(root_slug,0,uid)
+            prem=is_premium(uid)
+            status="✅ Premium" if prem else "🔒 Premium gerekli"
+            vids_text="".join(f"\n{'▶️' if prem else '🔒'} {v[1].split(chr(10))[0].split('#')[0].strip()}" for v in videos) or "\n_Bu kategoride video bulunamadı._"
+            q.edit_message_text(
+                f"{emoji} *{label}*\n📊 {total} video | {status}{vids_text}",
+                parse_mode='Markdown',reply_markup=kb2
+            )
+        else:
+            q.edit_message_text(
+                f"{emoji} *{label}*\n\nAlt kategori seç:",
+                parse_mode='Markdown',reply_markup=kb
+            )
+
+    # Alt kategori → videoları göster
+    elif data.startswith("subcat:"):
         parts=data.split(":")
         slug=parts[1]
         page=int(parts[2]) if len(parts)>2 else 0
         prem=is_premium(uid)
         kb,videos,total=videos_kb(slug,page,uid)
         db,cur=get_db()
-        cur.execute("SELECT label,emoji FROM categories WHERE slug=?",(slug,))
+        cur.execute("SELECT label,emoji,parent_id FROM categories WHERE slug=?",(slug,))
         row=cur.fetchone()
         label=row[0] if row else slug
-        emoji=(row[1] or '📁') if row else '📁'
-        status="✅ Premium — izleyebilirsin" if prem else "🔒 Premium gerekli — kilidi aç"
+        emoji=(row[1] or '🎬') if row else '🎬'
+        parent_id=row[2] if row else None
+        # root kategori adını bul (geri butonu için)
+        root_slug=slug
+        if parent_id:
+            cur.execute("SELECT slug FROM categories WHERE id=?",(parent_id,))
+            pr=cur.fetchone()
+            if pr:root_slug=pr[0]
+        status="✅ Premium" if prem else "🔒 Premium gerekli"
         vids_text=""
         for vid_id,title in videos:
+            clean=title.split('\n')[0].split('#')[0].strip()
             ic='▶️' if prem else '🔒'
-            vids_text+=f"\n{ic} {title}"
-        if not videos:
-            vids_text="\n_Bu kategoride video bulunamadı._"
+            vids_text+=f"\n{ic} {clean}"
+        if not videos:vids_text="\n_Bu kategoride video bulunamadı._"
+        # Geri butonu ekle (root categoriye)
+        back_row=[telegram.InlineKeyboardButton(f"⬅️ Geri",callback_data=f"rootcat:{root_slug}")]
+        if kb.inline_keyboard:
+            last=kb.inline_keyboard[-1]
+            kb.inline_keyboard.insert(-1,[back_row[0]])
         txt=(
             f"{emoji} *{label}*\n"
-            f"📊 Toplam {total} video | Sayfa {page+1}\n"
-            f"👤 {status}\n"
+            f"📊 {total} video | Sayfa {page+1} | {status}"
             f"{vids_text}"
         )
         q.edit_message_text(txt,parse_mode='Markdown',reply_markup=kb)
@@ -1563,6 +1644,14 @@ def main():
     from telegram.ext import PreCheckoutQueryHandler
     dp.add_handler(PreCheckoutQueryHandler(pre_checkout))
     dp.add_handler(MessageHandler(Filters.successful_payment,successful_payment))
+    # Bot komut listesini ayarla
+    try:
+        bot_instance.set_my_commands([
+            telegram.BotCommand('start','Botu başlat / Ana menü'),
+            telegram.BotCommand('menu','📋 Ana menüyü aç'),
+        ])
+    except Exception as e:
+        logger.warning(f"set_my_commands hatası: {e}")
     logger.info(f"{BOT_NAME} baslatiliyor... [polling aktif]")
     updater.start_polling()
     updater.idle()
