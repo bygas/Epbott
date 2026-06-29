@@ -1,10 +1,18 @@
 services:
   - type: web
-    name: epbot
-    buildCommand: cd artifacts/elited-vip && pip install -r requirements.txt
+    name: elited-vip
+    env: python
+    region: frankfurt
+    plan: free
+    buildCommand: pip install -r artifacts/elited-vip/requirements.txt
     startCommand: cd artifacts/elited-vip && python main.py
     envVars:
       - key: BOT_TOKEN
+        sync: false
       - key: ADMIN_ID
+        sync: false
+      - key: WEBAPP_URL
+        sync: false
       - key: PORT
         value: 10000
+    healthCheckPath: /ping

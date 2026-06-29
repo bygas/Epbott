@@ -13,8 +13,13 @@ import os
 import threading
 import requests as req_lib
 
-TOKEN = os.environ.get("BOT_TOKEN", "6643550719:AAGsVoafrb3vyp57siDPKmi6tqBrYqTW7L8")
-ADMIN_ID = 1347991918
+TOKEN = os.environ.get("BOT_TOKEN")
+if not TOKEN:
+    raise RuntimeError("BOT_TOKEN environment variable is not set!")
+
+ADMIN_ID = int(os.environ.get("ADMIN_ID", "0"))
+if not ADMIN_ID:
+    raise RuntimeError("ADMIN_ID environment variable is not set!")
 
 def _detect_webapp_url():
     for d in os.environ.get('REPLIT_DOMAINS', '').split(','):

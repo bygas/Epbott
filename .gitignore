@@ -47,3 +47,7 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# SQLite database (local only, do not commit)
+*.db
+*.sqlite
