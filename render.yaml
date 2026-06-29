@@ -1,11 +1,11 @@
 services:
   - type: web
     name: elited-vip
-    env: python
+    env: docker
     region: frankfurt
     plan: free
-    buildCommand: pip install -r artifacts/elited-vip/requirements.txt
-    startCommand: cd artifacts/elited-vip && python main.py
+    dockerfilePath: artifacts/elited-vip/Dockerfile
+    dockerContext: artifacts/elited-vip
     envVars:
       - key: BOT_TOKEN
         sync: false

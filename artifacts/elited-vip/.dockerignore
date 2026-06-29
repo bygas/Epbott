@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite
+.env
+.env.*
+node_modules/
+src/
+public/
+*.json
+*.ts
+*.html
+Eskimain.py
