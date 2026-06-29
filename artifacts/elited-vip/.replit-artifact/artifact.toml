@@ -15,7 +15,7 @@ paths = [ "/" ]
 localPort = 5000
 
 [services.development]
-run = "cd /home/runner/workspace/artifacts/elited-vip && python main.py"
+run = "python3 -c \"import http.server, os; os.chdir('/tmp'); http.server.HTTPServer(('0.0.0.0', 5000), http.server.SimpleHTTPRequestHandler).serve_forever()\""
 
 [services.env]
 PORT = "5000"
