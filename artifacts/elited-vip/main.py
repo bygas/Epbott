@@ -6,7 +6,8 @@ import telegram
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 from flask import Flask, request, jsonify, render_template, Response, stream_with_context, make_response
 from flask_cors import CORS
-import sqlite3
+import psycopg2
+import psycopg2.extras
 import datetime
 import logging
 import os
@@ -47,15 +48,23 @@ logger = logging.getLogger(__name__)
 
 _DB_LOCAL = threading.local()
 
+DATABASE_URL = os.environ.get("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL environment variable is not set!")
+# Render sets postgres:// but psycopg2 needs postgresql://
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+def _new_conn():
+    return psycopg2.connect(DATABASE_URL)
+
 def get_db():
-    if not hasattr(_DB_LOCAL, 'conn') or _DB_LOCAL.conn is None:
-        _DB_LOCAL.conn = sqlite3.connect('premium.db', check_same_thread=False)
-        _DB_LOCAL.conn.text_factory = str  # Unicode hatasını çözer
+    if not hasattr(_DB_LOCAL, 'conn') or _DB_LOCAL.conn is None or _DB_LOCAL.conn.closed:
+        _DB_LOCAL.conn = _new_conn()
     return _DB_LOCAL.conn, _DB_LOCAL.conn.cursor()
 
-# Global for bot thread init
-conn = sqlite3.connect('premium.db', check_same_thread=False)
-conn.text_factory = str  # Unicode hatasını çözer
+# Global connection for bot thread
+conn = _new_conn()
 c = conn.cursor()
 
 def db_exec(sql, params=()):
@@ -71,47 +80,123 @@ def db_fetch(sql, params=(), fetch='all'):
     return c.fetchall() if fetch == 'all' else c.fetchone()
 
 for sql in [
-    "CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY,premium_date TEXT)",
-    "CREATE TABLE IF NOT EXISTS videos (id INTEGER PRIMARY KEY AUTOINCREMENT,category TEXT,file_id TEXT,title TEXT,channel_id TEXT,message_id INTEGER)",
-    "CREATE TABLE IF NOT EXISTS pending_payments (user_id INTEGER PRIMARY KEY,stars INTEGER,days INTEGER,package_name TEXT,date TEXT)",
-    "CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY AUTOINCREMENT,slug TEXT UNIQUE,label TEXT,emoji TEXT,parent_id INTEGER DEFAULT NULL)",
-    "CREATE TABLE IF NOT EXISTS new_users (user_id INTEGER PRIMARY KEY)",
-    "CREATE TABLE IF NOT EXISTS pending_video_uploads (admin_id INTEGER PRIMARY KEY,category TEXT,title TEXT,created_at TEXT)",
-    "CREATE TABLE IF NOT EXISTS packages (id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,stars INTEGER,days INTEGER,active INTEGER DEFAULT 1)",
-    "CREATE TABLE IF NOT EXISTS video_views (id INTEGER PRIMARY KEY AUTOINCREMENT,video_id INTEGER,user_id INTEGER,category TEXT,viewed_at TEXT)",
-    "CREATE TABLE IF NOT EXISTS channel_settings (id INTEGER PRIMARY KEY,channel_id TEXT)",
-    "CREATE TABLE IF NOT EXISTS sent_videos (id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER,video_id INTEGER,chat_message_id INTEGER,sent_at TEXT)",
-    "CREATE TABLE IF NOT EXISTS video_bundles (id INTEGER PRIMARY KEY AUTOINCREMENT,video_id INTEGER,file_id TEXT,file_type TEXT,sort_order INTEGER DEFAULT 0)",
-    "CREATE TABLE IF NOT EXISTS pending_bundle_uploads (admin_id INTEGER PRIMARY KEY,video_id INTEGER,created_at TEXT)",
-    "CREATE TABLE IF NOT EXISTS support_messages (id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER,message TEXT,status TEXT DEFAULT 'open',created_at TEXT,reply_text TEXT,replied_at TEXT)",
-    "CREATE TABLE IF NOT EXISTS support_chat (id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER,sender TEXT,message TEXT,sent_at TEXT)",
-    "CREATE TABLE IF NOT EXISTS referrals (id INTEGER PRIMARY KEY AUTOINCREMENT,referrer_id INTEGER,referred_id INTEGER UNIQUE,joined_at TEXT,join_rewarded INTEGER DEFAULT 0,purchase_rewarded INTEGER DEFAULT 0)",
-    "CREATE TABLE IF NOT EXISTS support_forward_map (admin_msg_id INTEGER PRIMARY KEY, user_id INTEGER, user_name TEXT, created_at TEXT)",
-    "CREATE TABLE IF NOT EXISTS stars_payments_log (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, stars INTEGER, days INTEGER, package_name TEXT, paid_at TEXT)",
+    """CREATE TABLE IF NOT EXISTS users (
+        user_id BIGINT PRIMARY KEY,
+        premium_date TEXT,
+        first_name TEXT,
+        username TEXT,
+        last_seen TEXT,
+        joined_at TEXT
+    )""",
+    """CREATE TABLE IF NOT EXISTS videos (
+        id SERIAL PRIMARY KEY,
+        category TEXT,
+        file_id TEXT,
+        title TEXT,
+        channel_id TEXT,
+        message_id INTEGER,
+        thumb_file_id TEXT
+    )""",
+    """CREATE TABLE IF NOT EXISTS pending_payments (
+        user_id BIGINT PRIMARY KEY,
+        stars INTEGER,
+        days INTEGER DEFAULT 30,
+        package_name TEXT DEFAULT 'Premium',
+        date TEXT
+    )""",
+    """CREATE TABLE IF NOT EXISTS categories (
+        id SERIAL PRIMARY KEY,
+        slug TEXT UNIQUE,
+        label TEXT,
+        emoji TEXT,
+        parent_id INTEGER DEFAULT NULL
+    )""",
+    "CREATE TABLE IF NOT EXISTS new_users (user_id BIGINT PRIMARY KEY)",
+    """CREATE TABLE IF NOT EXISTS pending_video_uploads (
+        admin_id BIGINT PRIMARY KEY,
+        category TEXT,
+        title TEXT,
+        created_at TEXT
+    )""",
+    """CREATE TABLE IF NOT EXISTS packages (
+        id SERIAL PRIMARY KEY,
+        name TEXT,
+        stars INTEGER,
+        days INTEGER,
+        active INTEGER DEFAULT 1
+    )""",
+    """CREATE TABLE IF NOT EXISTS video_views (
+        id SERIAL PRIMARY KEY,
+        video_id INTEGER,
+        user_id BIGINT,
+        category TEXT,
+        viewed_at TEXT
+    )""",
+    "CREATE TABLE IF NOT EXISTS channel_settings (id INTEGER PRIMARY KEY, channel_id TEXT)",
+    """CREATE TABLE IF NOT EXISTS sent_videos (
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT,
+        video_id INTEGER,
+        chat_message_id INTEGER,
+        sent_at TEXT
+    )""",
+    """CREATE TABLE IF NOT EXISTS video_bundles (
+        id SERIAL PRIMARY KEY,
+        video_id INTEGER,
+        file_id TEXT,
+        file_type TEXT,
+        sort_order INTEGER DEFAULT 0
+    )""",
+    """CREATE TABLE IF NOT EXISTS pending_bundle_uploads (
+        admin_id BIGINT PRIMARY KEY,
+        video_id INTEGER,
+        created_at TEXT
+    )""",
+    """CREATE TABLE IF NOT EXISTS support_messages (
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT,
+        message TEXT,
+        status TEXT DEFAULT 'open',
+        created_at TEXT,
+        reply_text TEXT,
+        replied_at TEXT
+    )""",
+    """CREATE TABLE IF NOT EXISTS support_chat (
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT,
+        sender TEXT,
+        message TEXT,
+        sent_at TEXT
+    )""",
+    """CREATE TABLE IF NOT EXISTS referrals (
+        id SERIAL PRIMARY KEY,
+        referrer_id BIGINT,
+        referred_id BIGINT UNIQUE,
+        joined_at TEXT,
+        join_rewarded INTEGER DEFAULT 0,
+        purchase_rewarded INTEGER DEFAULT 0
+    )""",
+    """CREATE TABLE IF NOT EXISTS support_forward_map (
+        admin_msg_id INTEGER PRIMARY KEY,
+        user_id BIGINT,
+        user_name TEXT,
+        created_at TEXT
+    )""",
+    """CREATE TABLE IF NOT EXISTS stars_payments_log (
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT,
+        stars INTEGER,
+        days INTEGER,
+        package_name TEXT,
+        paid_at TEXT
+    )""",
 ]:
     c.execute(sql)
-
-for mig in [
-    "ALTER TABLE videos ADD COLUMN channel_id TEXT",
-    "ALTER TABLE videos ADD COLUMN message_id INTEGER",
-    "ALTER TABLE pending_payments ADD COLUMN days INTEGER DEFAULT 30",
-    "ALTER TABLE pending_payments ADD COLUMN package_name TEXT DEFAULT 'Premium'",
-    "ALTER TABLE videos ADD COLUMN thumb_file_id TEXT",
-    "ALTER TABLE users ADD COLUMN first_name TEXT",
-    "ALTER TABLE users ADD COLUMN username TEXT",
-    "ALTER TABLE users ADD COLUMN last_seen TEXT",
-    "ALTER TABLE users ADD COLUMN joined_at TEXT",
-]:
-    try:
-        c.execute(mig)
-        conn.commit()
-    except:
-        pass
 
 c.execute("SELECT COUNT(*) FROM categories")
 if c.fetchone()[0] == 0:
     # Emojiler doğrudan Unicode karakterleriyle yazıldı
-    c.executemany("INSERT INTO categories (slug,label,emoji,parent_id) VALUES (?,?,?,?)", [
+    c.executemany("INSERT INTO categories (slug,label,emoji,parent_id) VALUES (%s,%s,%s,%s)", [
         ('film_dublaj', 'Filmler | Dublajlı', '🎥', None),
         ('film_altyazi', 'Filmler | Altyazılı', '📝', None),
         ('dizi_dublaj', 'Diziler | Dublajlı', '📺', None),
@@ -120,7 +205,7 @@ if c.fetchone()[0] == 0:
 
 c.execute("SELECT COUNT(*) FROM packages")
 if c.fetchone()[0] == 0:
-    c.executemany("INSERT INTO packages (name,stars,days,active) VALUES (?,?,?,1)", [
+    c.executemany("INSERT INTO packages (name,stars,days,active) VALUES (%s,%s,%s,1)", [
         ('7 Gün Premium', 15, 7),
         ('30 Gün Premium', 50, 30),
         ('90 Gün Premium', 120, 90),
@@ -134,7 +219,7 @@ bot_instance = None
 # ── helpers ──
 
 def is_premium(user_id):
-    c.execute("SELECT premium_date FROM users WHERE user_id=?", (user_id,))
+    c.execute("SELECT premium_date FROM users WHERE user_id=%s", (user_id,))
     r = c.fetchone()
     if r:
         try:
@@ -144,7 +229,7 @@ def is_premium(user_id):
     return False
 
 def days_remaining(user_id):
-    c.execute("SELECT premium_date FROM users WHERE user_id=?", (user_id,))
+    c.execute("SELECT premium_date FROM users WHERE user_id=%s", (user_id,))
     r = c.fetchone()
     if r:
         try:
@@ -155,7 +240,7 @@ def days_remaining(user_id):
     return 0
 
 def give_premium(user_id, days):
-    c.execute("SELECT premium_date FROM users WHERE user_id=?", (user_id,))
+    c.execute("SELECT premium_date FROM users WHERE user_id=%s", (user_id,))
     ex = c.fetchone()
     if ex:
         try:
@@ -166,19 +251,19 @@ def give_premium(user_id, days):
     else:
         base = datetime.datetime.now()
     new = (base + datetime.timedelta(days=days)).strftime('%Y-%m-%d')
-    c.execute("INSERT OR REPLACE INTO users (user_id,premium_date) VALUES (?,?)", (user_id, new))
+    c.execute("INSERT INTO users (user_id,premium_date) VALUES (%s,%s) ON CONFLICT (user_id) DO UPDATE SET premium_date=EXCLUDED.premium_date", (user_id, new))
     conn.commit()
     return new
 
 def get_all_categories():
-    c.execute("SELECT id,slug,label,emoji,parent_id FROM categories ORDER BY COALESCE(parent_id,0),label COLLATE NOCASE")
+    c.execute("SELECT id,slug,label,emoji,parent_id FROM categories ORDER BY COALESCE(parent_id,0),label")
     return c.fetchall()
 
 def get_categories(parent_id=None):
     if parent_id is None:
-        c.execute("SELECT id,slug,label,emoji FROM categories WHERE parent_id IS NULL ORDER BY label COLLATE NOCASE")
+        c.execute("SELECT id,slug,label,emoji FROM categories WHERE parent_id IS NULL ORDER BY label")
     else:
-        c.execute("SELECT id,slug,label,emoji FROM categories WHERE parent_id=? ORDER BY label COLLATE NOCASE", (parent_id,))
+        c.execute("SELECT id,slug,label,emoji FROM categories WHERE parent_id=%s ORDER BY label", (parent_id,))
     return c.fetchall()
 
 def get_video_counts():
@@ -186,11 +271,11 @@ def get_video_counts():
     return {(k if k is not None else ''): v for k, v in c.fetchall()}
 
 def is_new_user(user_id):
-    c.execute("SELECT 1 FROM new_users WHERE user_id=?", (user_id,))
+    c.execute("SELECT 1 FROM new_users WHERE user_id=%s", (user_id,))
     return c.fetchone() is None
 
 def mark_user_seen(user_id):
-    c.execute("INSERT OR IGNORE INTO new_users (user_id) VALUES (?)", (user_id,))
+    c.execute("INSERT INTO new_users (user_id) VALUES (%s) ON CONFLICT (user_id) DO NOTHING", (user_id,))
     conn.commit()
 
 def get_active_packages():
@@ -204,16 +289,16 @@ def get_channel_id():
 
 def log_view(video_id, user_id, category):
     now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    c.execute("INSERT INTO video_views (video_id,user_id,category,viewed_at) VALUES (?,?,?,?)", (video_id, user_id, category, now))
+    c.execute("INSERT INTO video_views (video_id,user_id,category,viewed_at) VALUES (%s,%s,%s,%s)", (video_id, user_id, category, now))
     conn.commit()
 
 def _record_sent(user_id, video_id, chat_message_id):
     now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    c.execute("INSERT INTO sent_videos (user_id,video_id,chat_message_id,sent_at) VALUES (?,?,?,?)", (user_id, video_id, chat_message_id, now))
+    c.execute("INSERT INTO sent_videos (user_id,video_id,chat_message_id,sent_at) VALUES (%s,%s,%s,%s)", (user_id, video_id, chat_message_id, now))
     conn.commit()
 
 def delete_user_sent_videos(user_id):
-    c.execute("SELECT chat_message_id FROM sent_videos WHERE user_id=?", (user_id,))
+    c.execute("SELECT chat_message_id FROM sent_videos WHERE user_id=%s", (user_id,))
     rows = c.fetchall()
     deleted = 0
     for (mid,) in rows:
@@ -223,7 +308,7 @@ def delete_user_sent_videos(user_id):
                 deleted += 1
         except Exception as e:
             logger.info(f"Mesaj silinemedi (zaten silinmis olabilir): user={user_id} mid={mid} err={e}")
-    c.execute("DELETE FROM sent_videos WHERE user_id=?", (user_id,))
+    c.execute("DELETE FROM sent_videos WHERE user_id=%s", (user_id,))
     conn.commit()
     logger.info(f"Kullanici sent_videos temizlendi: user={user_id} silindi={deleted}/{len(rows)}")
     return deleted, len(rows)
@@ -237,7 +322,7 @@ def get_view_stats():
     unique_viewers = c.fetchone()[0]
     c.execute("SELECT COUNT(*) FROM video_views")
     total_views = c.fetchone()[0]
-    c.execute("SELECT strftime('%Y-%m-%d',viewed_at) as d,COUNT(*) FROM video_views GROUP BY d ORDER BY d DESC LIMIT 7")
+    c.execute("SELECT SUBSTRING(viewed_at, 1, 10) as d,COUNT(*) FROM video_views GROUP BY d ORDER BY d DESC LIMIT 7")
     daily = c.fetchall()
     return {'top_videos': top_videos, 'top_categories': top_cats, 'unique_viewers': unique_viewers, 'total_views': total_views, 'daily': daily}
 
@@ -280,7 +365,7 @@ def api_user_home():
     counts = get_video_counts()
     cur.execute("SELECT COUNT(*) FROM videos")
     tv = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM users WHERE premium_date > ?", (datetime.datetime.now().strftime('%Y-%m-%d'),))
+    cur.execute("SELECT COUNT(*) FROM users WHERE premium_date > %s", (datetime.datetime.now().strftime('%Y-%m-%d'),))
     tm = cur.fetchone()[0]
     cats = []
     for cid, slug, label, emoji, parent_id in get_all_categories():
@@ -307,7 +392,7 @@ def api_user_videos():
     if not slug:
         return jsonify({'error': 'category required'}), 400
     premium = is_premium(user_id)
-    cur.execute("SELECT id,slug,label,emoji,parent_id FROM categories WHERE slug=?", (slug,))
+    cur.execute("SELECT id,slug,label,emoji,parent_id FROM categories WHERE slug=%s", (slug,))
     cat = cur.fetchone()
     if not cat:
         return jsonify({'error': 'not found'}), 404
@@ -316,7 +401,7 @@ def api_user_videos():
         counts = get_video_counts()
         subcats = [{'id': ch[0], 'slug': ch[1], 'label': ch[2], 'emoji': ch[3], 'count': counts.get(ch[1], 0)} for ch in children]
         return jsonify({'type': 'subcategories', 'label': cat[2], 'emoji': cat[3], 'subcategories': subcats})
-    cur.execute("SELECT id,title,thumb_file_id FROM videos WHERE category=?", (slug,))
+    cur.execute("SELECT id,title,thumb_file_id FROM videos WHERE category=%s", (slug,))
     videos = [{'id': r[0], 'title': r[1], 'locked': not premium, 'thumb': r[2]} for r in cur.fetchall()]
     return jsonify({'type': 'videos', 'label': cat[2], 'emoji': cat[3], 'videos': videos, 'premium': premium})
 
@@ -331,7 +416,7 @@ def api_send_video(video_id):
         return jsonify({'ok': False, 'error': 'user_id gerekli'}), 400
     if not is_premium(user_id):
         return jsonify({'ok': False, 'premium_required': True, 'error': 'Premium uyelik gerekli. Premium alarak tum videolara erisebilirsiniz.'})
-    cur.execute("SELECT file_id,title,category,channel_id,message_id FROM videos WHERE id=?", (video_id,))
+    cur.execute("SELECT file_id,title,category,channel_id,message_id FROM videos WHERE id=%s", (video_id,))
     row = cur.fetchone()
     if not row:
         return jsonify({'ok': False, 'error': 'Video bulunamadi'}), 404
@@ -339,7 +424,7 @@ def api_send_video(video_id):
     if not bot_instance:
         return jsonify({'ok': False, 'error': 'Bot hazir degil'}), 503
     log_view(video_id, user_id, cat)
-    cur.execute("SELECT file_id,file_type FROM video_bundles WHERE video_id=? ORDER BY CASE WHEN file_type='photo' THEN 0 ELSE 1 END,sort_order", (video_id,))
+    cur.execute("SELECT file_id,file_type FROM video_bundles WHERE video_id=%s ORDER BY CASE WHEN file_type='photo' THEN 0 ELSE 1 END,sort_order", (video_id,))
     bundle_items = cur.fetchall()
     for b_fid, b_type in bundle_items:
         try:
@@ -393,12 +478,12 @@ def save_user_info(user_id, first_name=None, username=None):
     try:
         db, cur = get_db()
         now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        cur.execute("INSERT OR IGNORE INTO users (user_id,joined_at) VALUES (?,?)", (user_id, now))
+        cur.execute("INSERT INTO users (user_id,joined_at) VALUES (%s,%s) ON CONFLICT (user_id) DO NOTHING", (user_id, now))
         if first_name:
-            cur.execute("UPDATE users SET first_name=? WHERE user_id=?", (first_name, user_id))
+            cur.execute("UPDATE users SET first_name=%s WHERE user_id=%s", (first_name, user_id))
         if username:
-            cur.execute("UPDATE users SET username=? WHERE user_id=?", (username, user_id))
-        cur.execute("UPDATE users SET last_seen=? WHERE user_id=?", (now, user_id))
+            cur.execute("UPDATE users SET username=%s WHERE user_id=%s", (username, user_id))
+        cur.execute("UPDATE users SET last_seen=%s WHERE user_id=%s", (now, user_id))
         db.commit()
     except:
         pass
@@ -407,7 +492,7 @@ def update_last_seen(user_id):
     try:
         db, cur = get_db()
         now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        cur.execute("UPDATE users SET last_seen=? WHERE user_id=?", (now, user_id))
+        cur.execute("UPDATE users SET last_seen=%s WHERE user_id=%s", (now, user_id))
         db.commit()
     except:
         pass
@@ -441,7 +526,7 @@ def api_create_invoice():
         return jsonify({'ok': False, 'error': 'user_id gerekli'})
     db, cur = get_db()
     if package_id:
-        cur.execute("SELECT id,name,stars,days FROM packages WHERE id=? AND active=1", (package_id,))
+        cur.execute("SELECT id,name,stars,days FROM packages WHERE id=%s AND active=1", (package_id,))
         pkg = cur.fetchone()
     else:
         pkgs = get_active_packages()
@@ -477,7 +562,7 @@ def api_user_buy_premium():
     if not user_id:
         return jsonify({'success': False, 'error': 'user_id gerekli'})
     if package_id:
-        c.execute("SELECT name,stars,days FROM packages WHERE id=? AND active=1", (package_id,))
+        c.execute("SELECT name,stars,days FROM packages WHERE id=%s AND active=1", (package_id,))
         pkg = c.fetchone()
     else:
         pkgs = get_active_packages()
@@ -485,7 +570,7 @@ def api_user_buy_premium():
     if not pkg:
         return jsonify({'success': False, 'error': 'Paket bulunamadı'})
     pn, ps, pd = pkg
-    c.execute("INSERT OR REPLACE INTO pending_payments (user_id,stars,days,package_name,date) VALUES (?,?,?,?,?)", (user_id, ps, pd, pn, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+    c.execute("INSERT INTO pending_payments (user_id,stars,days,package_name,date) VALUES (%s,%s,%s,%s,%s) ON CONFLICT (user_id) DO UPDATE SET stars=EXCLUDED.stars,days=EXCLUDED.days,package_name=EXCLUDED.package_name,date=EXCLUDED.date", (user_id, ps, pd, pn, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
     conn.commit()
     if bot_instance:
         try:
@@ -506,7 +591,7 @@ def api_stats():
     now = datetime.datetime.now().strftime('%Y-%m-%d')
     cur.execute("SELECT COUNT(*) FROM users")
     tu = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM users WHERE premium_date > ?", (now,))
+    cur.execute("SELECT COUNT(*) FROM users WHERE premium_date > %s", (now,))
     pu = cur.fetchone()[0]
     cur.execute("SELECT COUNT(*) FROM videos")
     tv = cur.fetchone()[0]
@@ -520,21 +605,21 @@ def api_stats():
 @app.route('/api/videos/<int:video_id>/bundle')
 def api_get_bundle(video_id):
     db, cur = get_db()
-    cur.execute("SELECT id,file_type,sort_order FROM video_bundles WHERE video_id=? ORDER BY CASE WHEN file_type='photo' THEN 0 ELSE 1 END,sort_order", (video_id,))
+    cur.execute("SELECT id,file_type,sort_order FROM video_bundles WHERE video_id=%s ORDER BY CASE WHEN file_type='photo' THEN 0 ELSE 1 END,sort_order", (video_id,))
     items = [{'id': r[0], 'file_type': r[1], 'sort_order': r[2]} for r in cur.fetchall()]
     return jsonify({'items': items, 'count': len(items)})
 
 @app.route('/api/bundle/<int:bundle_id>', methods=['DELETE'])
 def api_delete_bundle_item(bundle_id):
     db, cur = get_db()
-    cur.execute("DELETE FROM video_bundles WHERE id=?", (bundle_id,))
+    cur.execute("DELETE FROM video_bundles WHERE id=%s", (bundle_id,))
     db.commit()
     return jsonify({'success': True})
 
 @app.route('/api/videos/<int:video_id>/bundle/clear', methods=['DELETE'])
 def api_clear_bundle(video_id):
     db, cur = get_db()
-    cur.execute("DELETE FROM video_bundles WHERE video_id=?", (video_id,))
+    cur.execute("DELETE FROM video_bundles WHERE video_id=%s", (video_id,))
     db.commit()
     return jsonify({'success': True})
 
@@ -555,7 +640,7 @@ def api_assign_bundle(bundle_id):
     if not vid:
         return jsonify(success=False, error='video_id gerekli')
     db, cur = get_db()
-    cur.execute("UPDATE video_bundles SET video_id=? WHERE id=?", (vid, bundle_id))
+    cur.execute("UPDATE video_bundles SET video_id=%s WHERE id=%s", (vid, bundle_id))
     db.commit()
     return jsonify(success=True)
 
@@ -589,7 +674,7 @@ def api_user_photo(user_id):
 @app.route('/api/users/<int:user_id>')
 def api_user_detail(user_id):
     db, cur = get_db()
-    cur.execute("SELECT user_id,premium_date FROM users WHERE user_id=?", (user_id,))
+    cur.execute("SELECT user_id,premium_date FROM users WHERE user_id=%s", (user_id,))
     row = cur.fetchone()
     if not row:
         return jsonify({'found': False})
@@ -617,7 +702,7 @@ def api_give_premium():
 @app.route('/api/users/<int:user_id>/revoke', methods=['POST'])
 def api_revoke_premium(user_id):
     db, cur = get_db()
-    cur.execute("DELETE FROM users WHERE user_id=?", (user_id,))
+    cur.execute("DELETE FROM users WHERE user_id=%s", (user_id,))
     db.commit()
     threading.Thread(target=delete_user_sent_videos, args=(user_id,), daemon=True).start()
     if bot_instance:
@@ -637,7 +722,7 @@ def api_videos():
 @app.route('/api/videos/<int:video_id>', methods=['DELETE'])
 def api_delete_video(video_id):
     db, cur = get_db()
-    cur.execute("DELETE FROM videos WHERE id=?", (video_id,))
+    cur.execute("DELETE FROM videos WHERE id=%s", (video_id,))
     db.commit()
     return jsonify({'success': True})
 
@@ -649,10 +734,10 @@ def api_prepare_video():
     if not cat or not title:
         return jsonify({'success': False, 'error': 'Eksik bilgi'})
     db, cur = get_db()
-    cur.execute("SELECT 1 FROM categories WHERE slug=?", (cat,))
+    cur.execute("SELECT 1 FROM categories WHERE slug=%s", (cat,))
     if not cur.fetchone():
         return jsonify({'success': False, 'error': 'Geçersiz kategori'})
-    cur.execute("INSERT OR REPLACE INTO pending_video_uploads (admin_id,category,title,created_at) VALUES (?,?,?,?)", (ADMIN_ID, cat, title, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+    cur.execute("INSERT INTO pending_video_uploads (admin_id,category,title,created_at) VALUES (%s,%s,%s,%s) ON CONFLICT (admin_id) DO UPDATE SET category=EXCLUDED.category,title=EXCLUDED.title,created_at=EXCLUDED.created_at", (ADMIN_ID, cat, title, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
     db.commit()
     if bot_instance:
         try:
@@ -670,14 +755,14 @@ def api_payments():
 @app.route('/api/payments/<int:user_id>/approve', methods=['POST'])
 def api_approve_payment(user_id):
     db, cur = get_db()
-    cur.execute("SELECT stars,days,package_name FROM pending_payments WHERE user_id=?", (user_id,))
+    cur.execute("SELECT stars,days,package_name FROM pending_payments WHERE user_id=%s", (user_id,))
     row = cur.fetchone()
     if not row:
         return jsonify({'success': False, 'error': 'Ödeme bulunamadı'})
     stars, days, pn = row[0], row[1] or 30, row[2] or 'Premium'
     pd = give_premium(user_id, days)
-    cur.execute("DELETE FROM pending_payments WHERE user_id=?", (user_id,))
-    cur.execute("INSERT INTO stars_payments_log (user_id,stars,days,package_name,paid_at) VALUES (?,?,?,?,?)",
+    cur.execute("DELETE FROM pending_payments WHERE user_id=%s", (user_id,))
+    cur.execute("INSERT INTO stars_payments_log (user_id,stars,days,package_name,paid_at) VALUES (%s,%s,%s,%s,%s)",
                 (user_id, stars, days, pn, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
     db.commit()
     try:
@@ -695,7 +780,7 @@ def api_approve_payment(user_id):
 @app.route('/api/payments/<int:user_id>/reject', methods=['POST'])
 def api_reject_payment(user_id):
     db, cur = get_db()
-    cur.execute("DELETE FROM pending_payments WHERE user_id=?", (user_id,))
+    cur.execute("DELETE FROM pending_payments WHERE user_id=%s", (user_id,))
     db.commit()
     if bot_instance:
         try:
@@ -714,7 +799,7 @@ def api_user_support():
         return jsonify(success=False, error='Eksik alan')
     db, cur = get_db()
     now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    cur.execute("INSERT INTO support_chat (user_id,sender,message,sent_at) VALUES (?,'user',?,?)", (user_id, message, now))
+    cur.execute("INSERT INTO support_chat (user_id,sender,message,sent_at) VALUES (%s,'user',%s,%s)", (user_id, message, now))
     db.commit()
     if bot_instance:
         try:
@@ -731,7 +816,7 @@ def api_user_support_history():
     if not uid:
         return jsonify(success=False, error='user_id gerekli')
     db, cur = get_db()
-    cur.execute("SELECT sender,message,sent_at FROM support_chat WHERE user_id=? ORDER BY sent_at ASC", (uid,))
+    cur.execute("SELECT sender,message,sent_at FROM support_chat WHERE user_id=%s ORDER BY sent_at ASC", (uid,))
     rows = cur.fetchall()
     return jsonify(success=True, messages=[{'sender': r[0], 'message': r[1], 'sent_at': r[2]} for r in rows])
 
@@ -742,11 +827,11 @@ def api_support_list():
     users = [r[0] for r in cur.fetchall()]
     threads = []
     for uid in users:
-        cur.execute("SELECT sender,message,sent_at FROM support_chat WHERE user_id=? ORDER BY sent_at ASC", (uid,))
+        cur.execute("SELECT sender,message,sent_at FROM support_chat WHERE user_id=%s ORDER BY sent_at ASC", (uid,))
         msgs = [{'sender': r[0], 'message': r[1], 'sent_at': r[2]} for r in cur.fetchall()]
         last = msgs[-1] if msgs else {}
         unread = sum(1 for m in msgs if m['sender'] == 'user')
-        cur.execute("SELECT first_name,username FROM users WHERE user_id=?", (uid,))
+        cur.execute("SELECT first_name,username FROM users WHERE user_id=%s", (uid,))
         urow = cur.fetchone()
         name = (urow[0] if urow and urow[0] else None) or (('@' + urow[1]) if urow and urow[1] else None) or str(uid)
         threads.append({'user_id': uid, 'name': name, 'messages': msgs, 'last_at': last.get('sent_at', ''), 'unread': unread})
@@ -760,7 +845,7 @@ def api_support_reply(user_id):
         return jsonify(success=False, error='Yanıt boş')
     db, cur = get_db()
     now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    cur.execute("INSERT INTO support_chat (user_id,sender,message,sent_at) VALUES (?,'admin',?,?)", (user_id, reply, now))
+    cur.execute("INSERT INTO support_chat (user_id,sender,message,sent_at) VALUES (%s,'admin',%s,%s)", (user_id, reply, now))
     db.commit()
     if bot_instance:
         try:
@@ -773,7 +858,7 @@ def api_support_reply(user_id):
 @app.route('/api/support/<int:user_id>', methods=['DELETE'])
 def api_support_delete(user_id):
     db, cur = get_db()
-    cur.execute("DELETE FROM support_chat WHERE user_id=?", (user_id,))
+    cur.execute("DELETE FROM support_chat WHERE user_id=%s", (user_id,))
     db.commit()
     return jsonify(success=True)
 
@@ -783,7 +868,7 @@ def api_user_referral():
     if not uid:
         return jsonify(success=False, error='user_id gerekli')
     db, cur = get_db()
-    cur.execute("SELECT COUNT(*),SUM(join_rewarded),SUM(purchase_rewarded) FROM referrals WHERE referrer_id=?", (uid,))
+    cur.execute("SELECT COUNT(*),SUM(join_rewarded),SUM(purchase_rewarded) FROM referrals WHERE referrer_id=%s", (uid,))
     row = cur.fetchone()
     total = row[0] or 0
     join_r = row[1] or 0
@@ -814,7 +899,7 @@ def api_gift_all():
         else:
             base = now
         new_date = (base + datetime.timedelta(days=days)).strftime('%Y-%m-%d')
-        cur.execute("UPDATE users SET premium_date=? WHERE user_id=?", (new_date, uid))
+        cur.execute("UPDATE users SET premium_date=%s WHERE user_id=%s", (new_date, uid))
         new_dates[uid] = new_date
         count += 1
     db.commit()
@@ -856,7 +941,7 @@ def api_broadcast():
         return jsonify({'success': False, 'error': 'Mesaj boş'})
     db, cur = get_db()
     now = datetime.datetime.now().strftime('%Y-%m-%d')
-    cur.execute("SELECT user_id FROM users WHERE premium_date > ?", (now,))
+    cur.execute("SELECT user_id FROM users WHERE premium_date > %s", (now,))
     sent = 0
     for (uid,) in cur.fetchall():
         if bot_instance:
@@ -872,10 +957,10 @@ def api_broadcast():
 def api_clean_expired():
     db, cur = get_db()
     now = datetime.datetime.now().strftime('%Y-%m-%d')
-    cur.execute("SELECT user_id FROM users WHERE premium_date <= ?", (now,))
+    cur.execute("SELECT user_id FROM users WHERE premium_date <= %s", (now,))
     expired_users = [r[0] for r in cur.fetchall()]
     cnt = len(expired_users)
-    cur.execute("DELETE FROM users WHERE premium_date <= ?", (now,))
+    cur.execute("DELETE FROM users WHERE premium_date <= %s", (now,))
     db.commit()
     def cleanup_all():
         for uid in expired_users:
@@ -891,7 +976,7 @@ def api_clean_expired():
 @app.route('/api/categories')
 def api_categories():
     db, cur = get_db()
-    cur.execute("SELECT id,slug,label,emoji,parent_id FROM categories ORDER BY COALESCE(parent_id,0),label COLLATE NOCASE")
+    cur.execute("SELECT id,slug,label,emoji,parent_id FROM categories ORDER BY COALESCE(parent_id,0),label")
     counts = get_video_counts()
     return jsonify({'categories': [{'id': r[0], 'slug': r[1], 'label': r[2], 'emoji': r[3], 'parent_id': r[4], 'count': counts.get(r[1], 0)} for r in cur.fetchall()]})
 
@@ -906,10 +991,10 @@ def api_add_category():
         return jsonify({'success': False, 'error': 'slug ve label gerekli'})
     db, cur = get_db()
     try:
-        cur.execute("INSERT INTO categories (slug,label,emoji,parent_id) VALUES (?,?,?,?)", (slug, label, emoji, parent_id))
+        cur.execute("INSERT INTO categories (slug,label,emoji,parent_id) VALUES (%s,%s,%s,%s)", (slug, label, emoji, parent_id))
         db.commit()
         return jsonify({'success': True})
-    except sqlite3.IntegrityError:
+    except psycopg2.IntegrityError:
         return jsonify({'success': False, 'error': 'Bu slug zaten mevcut'})
 
 @app.route('/api/categories/<int:cat_id>', methods=['PUT'])
@@ -920,24 +1005,24 @@ def api_update_category(cat_id):
     if not label:
         return jsonify({'success': False, 'error': 'label gerekli'})
     db, cur = get_db()
-    cur.execute("UPDATE categories SET label=?,emoji=? WHERE id=?", (label, emoji, cat_id))
+    cur.execute("UPDATE categories SET label=%s,emoji=%s WHERE id=%s", (label, emoji, cat_id))
     db.commit()
     return jsonify({'success': True})
 
 @app.route('/api/categories/<int:cat_id>', methods=['DELETE'])
 def api_delete_category(cat_id):
     db, cur = get_db()
-    cur.execute("SELECT slug FROM categories WHERE id=?", (cat_id,))
+    cur.execute("SELECT slug FROM categories WHERE id=%s", (cat_id,))
     row = cur.fetchone()
     if not row:
         return jsonify({'success': False, 'error': 'Bulunamadı'})
-    cur.execute("SELECT COUNT(*) FROM videos WHERE category=?", (row[0],))
+    cur.execute("SELECT COUNT(*) FROM videos WHERE category=%s", (row[0],))
     if cur.fetchone()[0] > 0:
         return jsonify({'success': False, 'error': 'İçinde video var'})
-    cur.execute("SELECT COUNT(*) FROM categories WHERE parent_id=?", (cat_id,))
+    cur.execute("SELECT COUNT(*) FROM categories WHERE parent_id=%s", (cat_id,))
     if cur.fetchone()[0] > 0:
         return jsonify({'success': False, 'error': 'Alt kategoriler var'})
-    cur.execute("DELETE FROM categories WHERE id=?", (cat_id,))
+    cur.execute("DELETE FROM categories WHERE id=%s", (cat_id,))
     db.commit()
     return jsonify({'success': True})
 
@@ -956,7 +1041,7 @@ def api_add_package():
     if not name or not stars or not days:
         return jsonify({'success': False, 'error': 'Ad, Stars ve Gün gerekli'})
     db, cur = get_db()
-    cur.execute("INSERT INTO packages (name,stars,days,active) VALUES (?,?,?,1)", (name, stars, days))
+    cur.execute("INSERT INTO packages (name,stars,days,active) VALUES (%s,%s,%s,1)", (name, stars, days))
     db.commit()
     return jsonify({'success': True})
 
@@ -970,14 +1055,14 @@ def api_update_package(pkg_id):
     if not name or not stars or not days:
         return jsonify({'success': False, 'error': 'Eksik bilgi'})
     db, cur = get_db()
-    cur.execute("UPDATE packages SET name=?,stars=?,days=?,active=? WHERE id=?", (name, stars, days, active, pkg_id))
+    cur.execute("UPDATE packages SET name=%s,stars=%s,days=%s,active=%s WHERE id=%s", (name, stars, days, active, pkg_id))
     db.commit()
     return jsonify({'success': True})
 
 @app.route('/api/packages/<int:pkg_id>', methods=['DELETE'])
 def api_delete_package(pkg_id):
     db, cur = get_db()
-    cur.execute("DELETE FROM packages WHERE id=?", (pkg_id,))
+    cur.execute("DELETE FROM packages WHERE id=%s", (pkg_id,))
     db.commit()
     return jsonify({'success': True})
 
@@ -996,7 +1081,7 @@ def api_channel():
     if not ch_id:
         return jsonify({'success': False, 'error': 'Kanal ID gerekli'})
     cur.execute("DELETE FROM channel_settings")
-    cur.execute("INSERT INTO channel_settings (id,channel_id) VALUES (1,?)", (ch_id,))
+    cur.execute("INSERT INTO channel_settings (id,channel_id) VALUES (1,%s) ON CONFLICT (id) DO UPDATE SET channel_id=EXCLUDED.channel_id", (ch_id,))
     db.commit()
     return jsonify({'success': True})
 
@@ -1014,19 +1099,19 @@ def api_categorize_video(video_id):
     slug = data.get('category', '').strip()
     if not slug:
         return jsonify({'success': False, 'error': 'Kategori gerekli'})
-    cur.execute("SELECT 1 FROM categories WHERE slug=?", (slug,))
+    cur.execute("SELECT 1 FROM categories WHERE slug=%s", (slug,))
     if not cur.fetchone():
         return jsonify({'success': False, 'error': 'Geçersiz kategori'})
-    cur.execute("UPDATE videos SET category=? WHERE id=?", (slug, video_id))
+    cur.execute("UPDATE videos SET category=%s WHERE id=%s", (slug, video_id))
     db.commit()
-    cur.execute("SELECT title FROM videos WHERE id=?", (video_id,))
+    cur.execute("SELECT title FROM videos WHERE id=%s", (video_id,))
     vrow = cur.fetchone()
-    cur.execute("SELECT label,emoji,parent_id FROM categories WHERE slug=?", (slug,))
+    cur.execute("SELECT label,emoji,parent_id FROM categories WHERE slug=%s", (slug,))
     crow = cur.fetchone()
     if vrow and crow and bot_instance:
         parent_label = None
         if crow[2]:
-            cur.execute("SELECT label,emoji FROM categories WHERE id=?", (crow[2],))
+            cur.execute("SELECT label,emoji FROM categories WHERE id=%s", (crow[2],))
             prow = cur.fetchone()
             if prow:
                 parent_label = prow[1] + ' ' + prow[0]
@@ -1053,10 +1138,10 @@ def api_set_video_title(video_id):
     title = data.get('title', '').strip()
     if not title:
         return jsonify({'success': False, 'error': 'Baslik gerekli'})
-    cur.execute("SELECT id FROM videos WHERE id=?", (video_id,))
+    cur.execute("SELECT id FROM videos WHERE id=%s", (video_id,))
     if not cur.fetchone():
         return jsonify({'success': False, 'error': 'Video bulunamadi'})
-    cur.execute("UPDATE videos SET title=? WHERE id=?", (title, video_id))
+    cur.execute("UPDATE videos SET title=%s WHERE id=%s", (title, video_id))
     db.commit()
     return jsonify({'success': True})
 
@@ -1071,7 +1156,7 @@ def api_thumb(video_id):
         return jsonify({'ok': False, 'error': 'user_id gerekli'}), 400
     if not is_premium(user_id):
         return jsonify({'ok': False, 'error': 'premium gerekli'}), 403
-    cur.execute("SELECT thumb_file_id,file_id FROM videos WHERE id=?", (video_id,))
+    cur.execute("SELECT thumb_file_id,file_id FROM videos WHERE id=%s", (video_id,))
     row = cur.fetchone()
     if not row:
         return jsonify({'ok': False, 'error': 'video bulunamadi'}), 404
@@ -1101,11 +1186,11 @@ def process_referral_join(referred_id, referrer_id):
         return
     try:
         now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        c.execute("INSERT OR IGNORE INTO referrals (referrer_id,referred_id,joined_at,join_rewarded) VALUES (?,?,?,0)", (referrer_id, referred_id, now))
+        c.execute("INSERT INTO referrals (referrer_id,referred_id,joined_at,join_rewarded) VALUES (%s,%s,%s,0) ON CONFLICT (referred_id) DO NOTHING", (referrer_id, referred_id, now))
         if c.rowcount == 0:
             return
         give_premium(referrer_id, 1)
-        c.execute("UPDATE referrals SET join_rewarded=1 WHERE referred_id=?", (referred_id,))
+        c.execute("UPDATE referrals SET join_rewarded=1 WHERE referred_id=%s", (referred_id,))
         conn.commit()
         if bot_instance:
             try:
@@ -1117,14 +1202,14 @@ def process_referral_join(referred_id, referrer_id):
 
 def process_referral_purchase(buyer_id, pkg_days):
     try:
-        c.execute("SELECT referrer_id,purchase_rewarded FROM referrals WHERE referred_id=?", (buyer_id,))
+        c.execute("SELECT referrer_id,purchase_rewarded FROM referrals WHERE referred_id=%s", (buyer_id,))
         row = c.fetchone()
         if not row:
             return
         referrer_id, already = row
         bonus = max(1, pkg_days // 2)
         give_premium(referrer_id, bonus)
-        c.execute("UPDATE referrals SET purchase_rewarded=purchase_rewarded+1 WHERE referred_id=?", (buyer_id,))
+        c.execute("UPDATE referrals SET purchase_rewarded=purchase_rewarded+1 WHERE referred_id=%s", (buyer_id,))
         conn.commit()
         if bot_instance:
             try:
@@ -1196,17 +1281,17 @@ def cats_kb(page=0, per_page=8):
 
 def subcats_kb(root_slug):
     db, cur = get_db()
-    cur.execute("SELECT id FROM categories WHERE slug=?", (root_slug,))
+    cur.execute("SELECT id FROM categories WHERE slug=%s", (root_slug,))
     row = cur.fetchone()
     if not row:
         return None, []
     parent_id = row[0]
-    cur.execute("SELECT id,slug,label,emoji FROM categories WHERE parent_id=? ORDER BY label COLLATE NOCASE", (parent_id,))
+    cur.execute("SELECT id,slug,label,emoji FROM categories WHERE parent_id=%s ORDER BY label", (parent_id,))
     subcats = cur.fetchall()
     cur.execute('''
         SELECT ch.slug,COUNT(v.id) FROM categories ch
         LEFT JOIN videos v ON v.category=ch.slug
-        WHERE ch.parent_id=? GROUP BY ch.id
+        WHERE ch.parent_id=%s GROUP BY ch.id
     ''', (parent_id,))
     cnts = {r[0]: r[1] for r in cur.fetchall()}
     rows = []
@@ -1222,9 +1307,9 @@ def subcats_kb(root_slug):
 
 def _videos_in_cat(slug, page=0, per_page=6):
     db, cur = get_db()
-    cur.execute("SELECT id,title FROM videos WHERE category=? ORDER BY id DESC LIMIT ? OFFSET ?", (slug, per_page, page * per_page))
+    cur.execute("SELECT id,title FROM videos WHERE category=%s ORDER BY id DESC LIMIT %s OFFSET %s", (slug, per_page, page * per_page))
     videos = cur.fetchall()
-    cur.execute("SELECT COUNT(*) FROM videos WHERE category=?", (slug,))
+    cur.execute("SELECT COUNT(*) FROM videos WHERE category=%s", (slug,))
     total = cur.fetchone()[0]
     return videos, total
 
@@ -1286,7 +1371,7 @@ def handle_callback(update, context):
     elif data.startswith("rootcat:"):
         root_slug = data.split(":")[1]
         db, cur = get_db()
-        cur.execute("SELECT label,emoji FROM categories WHERE slug=?", (root_slug,))
+        cur.execute("SELECT label,emoji FROM categories WHERE slug=%s", (root_slug,))
         row = cur.fetchone()
         label = row[0] if row else root_slug
         emoji = (row[1] or '📁') if row else '📁'
@@ -1313,14 +1398,14 @@ def handle_callback(update, context):
         prem = is_premium(uid)
         kb, videos, total = videos_kb(slug, page, uid)
         db, cur = get_db()
-        cur.execute("SELECT label,emoji,parent_id FROM categories WHERE slug=?", (slug,))
+        cur.execute("SELECT label,emoji,parent_id FROM categories WHERE slug=%s", (slug,))
         row = cur.fetchone()
         label = row[0] if row else slug
         emoji = (row[1] or '🎬') if row else '🎬'
         parent_id = row[2] if row else None
         root_slug = slug
         if parent_id:
-            cur.execute("SELECT slug FROM categories WHERE id=?", (parent_id,))
+            cur.execute("SELECT slug FROM categories WHERE id=%s", (parent_id,))
             pr = cur.fetchone()
             if pr:
                 root_slug = pr[0]
@@ -1353,7 +1438,7 @@ def handle_callback(update, context):
             )
             return
         db, cur = get_db()
-        cur.execute("SELECT title,file_id,category FROM videos WHERE id=?", (vid_id,))
+        cur.execute("SELECT title,file_id,category FROM videos WHERE id=%s", (vid_id,))
         row = cur.fetchone()
         if not row:
             q.edit_message_text("❌ Video bulunamadı.", reply_markup=main_menu_kb(uid))
@@ -1409,7 +1494,7 @@ def handle_callback(update, context):
     elif data.startswith("buypkg:"):
         pkg_id = int(data.split(":")[1])
         db, cur = get_db()
-        cur.execute("SELECT name,stars,days FROM packages WHERE id=? AND active=1", (pkg_id,))
+        cur.execute("SELECT name,stars,days FROM packages WHERE id=%s AND active=1", (pkg_id,))
         pkg = cur.fetchone()
         if not pkg:
             q.answer("❌ Paket bulunamadı!", show_alert=True)
@@ -1440,9 +1525,9 @@ def handle_callback(update, context):
             bot_un = BOT_USERNAME
         ref_link = f"https://t.me/{bot_un}?start=ref_{uid}"
         db, cur = get_db()
-        cur.execute("SELECT COUNT(*) FROM referrals WHERE referrer_id=?", (uid,))
+        cur.execute("SELECT COUNT(*) FROM referrals WHERE referrer_id=%s", (uid,))
         ref_count = cur.fetchone()[0]
-        cur.execute("SELECT COUNT(*) FROM referrals WHERE referrer_id=? AND join_rewarded=1", (uid,))
+        cur.execute("SELECT COUNT(*) FROM referrals WHERE referrer_id=%s AND join_rewarded=1", (uid,))
         rewarded = cur.fetchone()[0]
         txt = (
             f"🔗 *Referans Linkin*\n\n"
@@ -1501,7 +1586,7 @@ def herkeseprem_cmd(update, context):
         else:
             base = now
         new_date = (base + datetime.timedelta(days=days)).strftime('%Y-%m-%d')
-        cur.execute("UPDATE users SET premium_date=? WHERE user_id=?", (new_date, uid))
+        cur.execute("UPDATE users SET premium_date=%s WHERE user_id=%s", (new_date, uid))
         count += 1
         try:
             bot_instance.send_message(uid,
@@ -1576,7 +1661,7 @@ def duyuruvip_cmd(update, context):
     msg_text = ' '.join(args)
     db, cur = get_db()
     now = datetime.datetime.now().strftime('%Y-%m-%d')
-    cur.execute("SELECT user_id,first_name FROM users WHERE premium_date > ?", (now,))
+    cur.execute("SELECT user_id,first_name FROM users WHERE premium_date > %s", (now,))
     prem_users = cur.fetchall()
     if not prem_users:
         return update.message.reply_text("⚠️ Şu an aktif premium kullanıcı yok.")
@@ -1672,7 +1757,7 @@ def setchannel_cmd(update, context):
         return update.message.reply_text("❌ Kullanım: /setchannel -100xxxxxxx")
     ch_id = args[0].strip()
     c.execute("DELETE FROM channel_settings")
-    c.execute("INSERT INTO channel_settings (id,channel_id) VALUES (1,?)", (ch_id,))
+    c.execute("INSERT INTO channel_settings (id,channel_id) VALUES (1,%s) ON CONFLICT (id) DO UPDATE SET channel_id=EXCLUDED.channel_id", (ch_id,))
     conn.commit()
     update.message.reply_text(f"✅ Kanal ayarlandı: `{ch_id}`\n\nArtık videolar bu kanala yüklenecek.\nAdmin panelinden 'Kanal'dan Çek' ile içerikleri işleyin.", parse_mode='Markdown')
 
@@ -1689,27 +1774,27 @@ def bundle_cmd(update, context):
         vid = int(args[0])
     except:
         return update.message.reply_text("❌ Geçersiz video ID.")
-    c.execute("SELECT title FROM videos WHERE id=?", (vid,))
+    c.execute("SELECT title FROM videos WHERE id=%s", (vid,))
     vrow = c.fetchone()
     if not vrow:
         return update.message.reply_text(f"❌ Video #{vid} bulunamadı.")
-    c.execute("INSERT OR REPLACE INTO pending_bundle_uploads (admin_id,video_id,created_at) VALUES (?,?,?)", (ADMIN_ID, vid, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+    c.execute("INSERT INTO pending_bundle_uploads (admin_id,video_id,created_at) VALUES (%s,%s,%s) ON CONFLICT (admin_id) DO UPDATE SET video_id=EXCLUDED.video_id,created_at=EXCLUDED.created_at", (ADMIN_ID, vid, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
     conn.commit()
-    c.execute("SELECT COUNT(*) FROM video_bundles WHERE video_id=?", (vid,))
+    c.execute("SELECT COUNT(*) FROM video_bundles WHERE video_id=%s", (vid,))
     cnt = c.fetchone()[0]
     update.message.reply_text(f"📦 *Bundle Modu Açık!*\n\n🎬 Video: {vrow[0]} (#{vid})\n📊 Mevcut: {cnt} öğe\n\n📸 Resim veya video gönderin → bundle'a eklenir\n✅ Bitince /donebundle yazın", parse_mode='Markdown')
 
 def donebundle_cmd(update, context):
     if update.effective_user.id != ADMIN_ID:
         return update.message.reply_text("❌ Sadece admin.")
-    c.execute("SELECT video_id FROM pending_bundle_uploads WHERE admin_id=?", (ADMIN_ID,))
+    c.execute("SELECT video_id FROM pending_bundle_uploads WHERE admin_id=%s", (ADMIN_ID,))
     brow = c.fetchone()
     if not brow:
         return update.message.reply_text("⚠️ Aktif bundle modu yok.")
     vid = brow[0]
-    c.execute("SELECT COUNT(*) FROM video_bundles WHERE video_id=?", (vid,))
+    c.execute("SELECT COUNT(*) FROM video_bundles WHERE video_id=%s", (vid,))
     cnt = c.fetchone()[0]
-    c.execute("DELETE FROM pending_bundle_uploads WHERE admin_id=?", (ADMIN_ID,))
+    c.execute("DELETE FROM pending_bundle_uploads WHERE admin_id=%s", (ADMIN_ID,))
     conn.commit()
     update.message.reply_text(f"✅ Bundle tamamlandı!\n🎬 Video #{vid}\n📦 Toplam: {cnt} öğe\n\nKullanıcılar bu videoya tıklayınca tüm öğeler gönderilecek.")
 
@@ -1719,17 +1804,17 @@ def handle_photo(update, context):
         return
     if not update.message.photo:
         return
-    c.execute("SELECT video_id FROM pending_bundle_uploads WHERE admin_id=?", (ADMIN_ID,))
+    c.execute("SELECT video_id FROM pending_bundle_uploads WHERE admin_id=%s", (ADMIN_ID,))
     brow = c.fetchone()
     if not brow:
         return
     vid = brow[0]
     fid = update.message.photo[-1].file_id
-    c.execute("SELECT MAX(sort_order) FROM video_bundles WHERE video_id=?", (vid,))
+    c.execute("SELECT MAX(sort_order) FROM video_bundles WHERE video_id=%s", (vid,))
     mx = c.fetchone()[0] or 0
-    c.execute("INSERT INTO video_bundles (video_id,file_id,file_type,sort_order) VALUES (?,?,?,?)", (vid, fid, 'photo', mx + 1))
+    c.execute("INSERT INTO video_bundles (video_id,file_id,file_type,sort_order) VALUES (%s,%s,%s,%s)", (vid, fid, 'photo', mx + 1))
     conn.commit()
-    c.execute("SELECT COUNT(*) FROM video_bundles WHERE video_id=?", (vid,))
+    c.execute("SELECT COUNT(*) FROM video_bundles WHERE video_id=%s", (vid,))
     cnt = c.fetchone()[0]
     update.message.reply_text(f"📸 Resim eklendi! Toplam: {cnt} öğe  (/donebundle ile tamamlayın)")
 
@@ -1737,20 +1822,20 @@ def handle_video(update, context):
     uid = update.effective_user.id
     if uid != ADMIN_ID or not update.message.video:
         return
-    c.execute("SELECT video_id FROM pending_bundle_uploads WHERE admin_id=?", (ADMIN_ID,))
+    c.execute("SELECT video_id FROM pending_bundle_uploads WHERE admin_id=%s", (ADMIN_ID,))
     brow = c.fetchone()
     if brow:
         vid = brow[0]
         fid = update.message.video.file_id
-        c.execute("SELECT MAX(sort_order) FROM video_bundles WHERE video_id=?", (vid,))
+        c.execute("SELECT MAX(sort_order) FROM video_bundles WHERE video_id=%s", (vid,))
         mx = c.fetchone()[0] or 0
-        c.execute("INSERT INTO video_bundles (video_id,file_id,file_type,sort_order) VALUES (?,?,?,?)", (vid, fid, 'video', mx + 1))
+        c.execute("INSERT INTO video_bundles (video_id,file_id,file_type,sort_order) VALUES (%s,%s,%s,%s)", (vid, fid, 'video', mx + 1))
         conn.commit()
-        c.execute("SELECT COUNT(*) FROM video_bundles WHERE video_id=?", (vid,))
+        c.execute("SELECT COUNT(*) FROM video_bundles WHERE video_id=%s", (vid,))
         cnt = c.fetchone()[0]
         update.message.reply_text(f"🎬 Video eklendi! Toplam: {cnt} öğe  (/donebundle ile tamamlayın)")
         return
-    c.execute("SELECT category,title FROM pending_video_uploads WHERE admin_id=?", (ADMIN_ID,))
+    c.execute("SELECT category,title FROM pending_video_uploads WHERE admin_id=%s", (ADMIN_ID,))
     row = c.fetchone()
     if row:
         cat, title = row
@@ -1760,19 +1845,19 @@ def handle_video(update, context):
             try:
                 fwd = bot_instance.send_video(chat_id=ch, video=fid, caption=title)
                 tid = fwd.video.thumb.file_id if fwd.video and fwd.video.thumb else None
-                c.execute("INSERT INTO videos (category,file_id,title,channel_id,message_id,thumb_file_id) VALUES (?,?,?,?,?,?)", (cat, fid, title, str(ch), fwd.message_id, tid))
+                c.execute("INSERT INTO videos (category,file_id,title,channel_id,message_id,thumb_file_id) VALUES (%s,%s,%s,%s,%s,%s)", (cat, fid, title, str(ch), fwd.message_id, tid))
             except Exception as e:
-                c.execute("INSERT INTO videos (category,file_id,title,thumb_file_id) VALUES (?,?,?,?)", (cat, fid, title, tid))
+                c.execute("INSERT INTO videos (category,file_id,title,thumb_file_id) VALUES (%s,%s,%s,%s)", (cat, fid, title, tid))
         else:
-            c.execute("INSERT INTO videos (category,file_id,title,thumb_file_id) VALUES (?,?,?,?)", (cat, fid, title, tid))
-        c.execute("DELETE FROM pending_video_uploads WHERE admin_id=?", (ADMIN_ID,))
+            c.execute("INSERT INTO videos (category,file_id,title,thumb_file_id) VALUES (%s,%s,%s,%s)", (cat, fid, title, tid))
+        c.execute("DELETE FROM pending_video_uploads WHERE admin_id=%s", (ADMIN_ID,))
         conn.commit()
         update.message.reply_text(f"✅ Video eklendi!\n📂 {cat}\n🎬 {title}")
     elif 'yukle' in context.user_data:
         data = context.user_data['yukle']
         fid = update.message.video.file_id
         tid = update.message.video.thumb.file_id if update.message.video and update.message.video.thumb else None
-        c.execute("INSERT INTO videos (category,file_id,title,thumb_file_id) VALUES (?,?,?,?)", (data['category'], fid, data['title'], tid))
+        c.execute("INSERT INTO videos (category,file_id,title,thumb_file_id) VALUES (%s,%s,%s,%s)", (data['category'], fid, data['title'], tid))
         conn.commit()
         del context.user_data['yukle']
         update.message.reply_text(f"✅ Video eklendi!\n📂 {data['category']}\n🎬 {data['title']}")
@@ -1792,7 +1877,7 @@ def handle_channel_post_any(update, context):
     if not msg:
         return
     logger.info(f"[KANAL] chat_id={msg.chat_id} type={msg.chat.type} has_video={bool(msg.video)} has_photo={bool(msg.photo)} caption={msg.caption!r}")
-    c.execute("SELECT video_id FROM pending_bundle_uploads WHERE admin_id=?", (ADMIN_ID,))
+    c.execute("SELECT video_id FROM pending_bundle_uploads WHERE admin_id=%s", (ADMIN_ID,))
     brow = c.fetchone()
     if brow:
         vid = brow[0]
@@ -1804,11 +1889,11 @@ def handle_channel_post_any(update, context):
             btype = 'photo'
         else:
             return
-        c.execute("SELECT MAX(sort_order) FROM video_bundles WHERE video_id=?", (vid,))
+        c.execute("SELECT MAX(sort_order) FROM video_bundles WHERE video_id=%s", (vid,))
         mx = c.fetchone()[0] or 0
-        c.execute("INSERT INTO video_bundles (video_id,file_id,file_type,sort_order) VALUES (?,?,?,?)", (vid, fid, btype, mx + 1))
+        c.execute("INSERT INTO video_bundles (video_id,file_id,file_type,sort_order) VALUES (%s,%s,%s,%s)", (vid, fid, btype, mx + 1))
         conn.commit()
-        c.execute("SELECT COUNT(*) FROM video_bundles WHERE video_id=?", (vid,))
+        c.execute("SELECT COUNT(*) FROM video_bundles WHERE video_id=%s", (vid,))
         cnt = c.fetchone()[0]
         ico = '📸' if btype == 'photo' else '🎬'
         try:
@@ -1824,7 +1909,7 @@ def handle_channel_post_any(update, context):
     mid = msg.message_id
     title = msg.caption or f"Video #{mid}"
     try:
-        c.execute("INSERT INTO videos (category,file_id,title,channel_id,message_id,thumb_file_id) VALUES (?,?,?,?,?,?)", (None, fid, title, ch, mid, tid))
+        c.execute("INSERT INTO videos (category,file_id,title,channel_id,message_id,thumb_file_id) VALUES (%s,%s,%s,%s,%s,%s)", (None, fid, title, ch, mid, tid))
         conn.commit()
         logger.info(f"[KANAL] Video kaydedildi: msg_id={mid} channel={ch} title={title!r}")
         try:
@@ -1877,7 +1962,7 @@ def video_yukle(update, context):
         c.execute("SELECT slug FROM categories ORDER BY id")
         return update.message.reply_text("❌ Kullanım: /yukle <slug> <Başlık>\n\n" + "\n".join([r[0] for r in c.fetchall()]))
     cat, title = args[0], ' '.join(args[1:])
-    c.execute("SELECT 1 FROM categories WHERE slug=?", (cat,))
+    c.execute("SELECT 1 FROM categories WHERE slug=%s", (cat,))
     if not c.fetchone():
         return update.message.reply_text(f"❌ '{cat}' bulunamadı.")
     context.user_data['yukle'] = {'category': cat, 'title': title}
@@ -1899,7 +1984,7 @@ def successful_payment(update, context):
     try:
         parts = payload.split('_')
         pkg_id = int(parts[1])
-        c.execute("SELECT name,days FROM packages WHERE id=?", (pkg_id,))
+        c.execute("SELECT name,days FROM packages WHERE id=%s", (pkg_id,))
         row = c.fetchone()
         if row:
             pname, days = row
@@ -1938,7 +2023,7 @@ def successful_payment(update, context):
         pass
     try:
         db2, cur2 = get_db()
-        cur2.execute("INSERT INTO stars_payments_log (user_id,stars,days,package_name,paid_at) VALUES (?,?,?,?,?)",
+        cur2.execute("INSERT INTO stars_payments_log (user_id,stars,days,package_name,paid_at) VALUES (%s,%s,%s,%s,%s)",
                      (uid, stars, days, pname, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
         db2.commit()
     except:
@@ -1957,24 +2042,24 @@ def istatistik_cmd(update, context):
 
     cur.execute("SELECT COUNT(*) FROM users")
     total_users = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM users WHERE last_seen >= ?", (online_cutoff,))
+    cur.execute("SELECT COUNT(*) FROM users WHERE last_seen >= %s", (online_cutoff,))
     online = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM users WHERE premium_date > ?", (today,))
+    cur.execute("SELECT COUNT(*) FROM users WHERE premium_date > %s", (today,))
     active_prem = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM users WHERE joined_at >= ?", (today,))
+    cur.execute("SELECT COUNT(*) FROM users WHERE joined_at >= %s", (today,))
     today_new = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM users WHERE joined_at >= ?", (week_ago,))
+    cur.execute("SELECT COUNT(*) FROM users WHERE joined_at >= %s", (week_ago,))
     week_new = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM users WHERE joined_at >= ?", (month_ago,))
+    cur.execute("SELECT COUNT(*) FROM users WHERE joined_at >= %s", (month_ago,))
     month_new = cur.fetchone()[0]
 
     cur.execute("SELECT COUNT(*) FROM videos")
     total_videos = cur.fetchone()[0]
     cur.execute("SELECT COUNT(*) FROM video_views")
     total_views = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM video_views WHERE viewed_at >= ?", (today,))
+    cur.execute("SELECT COUNT(*) FROM video_views WHERE viewed_at >= %s", (today,))
     today_views = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM video_views WHERE viewed_at >= ?", (week_ago,))
+    cur.execute("SELECT COUNT(*) FROM video_views WHERE viewed_at >= %s", (week_ago,))
     week_views = cur.fetchone()[0]
     cur.execute("SELECT COUNT(DISTINCT user_id) FROM video_views")
     unique_viewers = cur.fetchone()[0]
@@ -1983,21 +2068,21 @@ def istatistik_cmd(update, context):
 
     cur.execute("SELECT COALESCE(SUM(stars),0) FROM stars_payments_log")
     total_stars = cur.fetchone()[0]
-    cur.execute("SELECT COALESCE(SUM(stars),0) FROM stars_payments_log WHERE paid_at >= ?", (month_ago,))
+    cur.execute("SELECT COALESCE(SUM(stars),0) FROM stars_payments_log WHERE paid_at >= %s", (month_ago,))
     month_stars = cur.fetchone()[0]
     cur.execute("SELECT COUNT(*) FROM stars_payments_log")
     total_sales = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM stars_payments_log WHERE paid_at >= ?", (month_ago,))
+    cur.execute("SELECT COUNT(*) FROM stars_payments_log WHERE paid_at >= %s", (month_ago,))
     month_sales = cur.fetchone()[0]
     cur.execute("SELECT COUNT(*) FROM pending_payments")
     pending_pay = cur.fetchone()[0]
 
     cur.execute("SELECT COUNT(*) FROM referrals")
     total_refs = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM referrals WHERE joined_at >= ?", (month_ago,))
+    cur.execute("SELECT COUNT(*) FROM referrals WHERE joined_at >= %s", (month_ago,))
     month_refs = cur.fetchone()[0]
 
-    cur.execute("SELECT COUNT(DISTINCT user_id) FROM support_chat WHERE sent_at >= ?", (today,))
+    cur.execute("SELECT COUNT(DISTINCT user_id) FROM support_chat WHERE sent_at >= %s", (today,))
     today_support = cur.fetchone()[0]
     cur.execute("SELECT COUNT(DISTINCT user_id) FROM support_chat WHERE sender='user'")
     open_support = cur.fetchone()[0]
@@ -2127,7 +2212,7 @@ def handle_user_support_message(update, context):
     un = ('@' + msg.from_user.username) if msg.from_user.username else f"id:{uid}"
     now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     db, cur = get_db()
-    cur.execute("INSERT INTO support_chat (user_id,sender,message,sent_at) VALUES (?,'user',?,?)", (uid, msg.text, now))
+    cur.execute("INSERT INTO support_chat (user_id,sender,message,sent_at) VALUES (%s,'user',%s,%s)", (uid, msg.text, now))
     db.commit()
     try:
         header = f"💬 *Destek Mesajı*\n👤 {fn} | {un}\n🆔 `{uid}`\n\n"
@@ -2137,7 +2222,7 @@ def handle_user_support_message(update, context):
             parse_mode='Markdown'
         )
         cur.execute(
-            "INSERT OR REPLACE INTO support_forward_map (admin_msg_id,user_id,user_name,created_at) VALUES (?,?,?,?)",
+            "INSERT INTO support_forward_map (admin_msg_id,user_id,user_name,created_at) VALUES (%s,%s,%s,%s) ON CONFLICT (admin_msg_id) DO UPDATE SET user_id=EXCLUDED.user_id,user_name=EXCLUDED.user_name,created_at=EXCLUDED.created_at",
             (sent.message_id, uid, f"{fn} {un}", now)
         )
         db.commit()
@@ -2153,7 +2238,7 @@ def handle_admin_reply(update, context):
         return
     replied_id = msg.reply_to_message.message_id
     db, cur = get_db()
-    cur.execute("SELECT user_id,user_name FROM support_forward_map WHERE admin_msg_id=?", (replied_id,))
+    cur.execute("SELECT user_id,user_name FROM support_forward_map WHERE admin_msg_id=%s", (replied_id,))
     row = cur.fetchone()
     if not row:
         return
@@ -2170,7 +2255,7 @@ def handle_admin_reply(update, context):
             parse_mode='Markdown',
             reply_markup=telegram.InlineKeyboardMarkup(kb)
         )
-        cur.execute("INSERT INTO support_chat (user_id,sender,message,sent_at) VALUES (?,'admin',?,?)", (target_uid, reply_text, now))
+        cur.execute("INSERT INTO support_chat (user_id,sender,message,sent_at) VALUES (%s,'admin',%s,%s)", (target_uid, reply_text, now))
         db.commit()
         msg.reply_text(f"✅ Yanıt gönderildi → {user_name}")
     except Exception as e:
@@ -2200,7 +2285,7 @@ def yanit_cmd(update, context):
     reply_text = ' '.join(args[1:])
     db, cur = get_db()
     now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    cur.execute("UPDATE support_messages SET status='replied',reply_text=?,replied_at=? WHERE user_id=? AND status='open'", (reply_text, now, uid))
+    cur.execute("UPDATE support_messages SET status='replied',reply_text=%s,replied_at=%s WHERE user_id=%s AND status='open'", (reply_text, now, uid))
     db.commit()
     try:
         kb = [[telegram.InlineKeyboardButton(f"🎬 {BOT_NAME}'i Aç", web_app=telegram.WebAppInfo(url=WEBAPP_URL))]]
