@@ -1344,6 +1344,13 @@ def packages_kb():
         )])
     return with_menu(rows)
 
+def safe_edit(q, *args, **kwargs):
+    try:
+        q.edit_message_text(*args, **kwargs)
+    except telegram.error.BadRequest as e:
+        if 'not modified' not in str(e).lower():
+            raise
+
 def handle_callback(update, context):
     q = update.callback_query
     uid = q.from_user.id
@@ -1352,7 +1359,7 @@ def handle_callback(update, context):
     update_last_seen(uid)
 
     if data == "menu_main":
-        q.edit_message_text(
+        safe_edit(q, 
             f"🔥 *{BOT_NAME} — Ana Menü*\n\nAşağıdan bir işlem seç:",
             parse_mode='Markdown',
             reply_markup=main_menu_kb(uid)
@@ -1362,7 +1369,7 @@ def handle_callback(update, context):
     elif data.startswith("menu_cats:"):
         page = int(data.split(":")[1])
         cats = get_categories()
-        q.edit_message_text(
+        safe_edit(q, 
             f"📁 *Kategoriler* ({len(cats)} kategori)\n\nBir kategori seç:",
             parse_mode='Markdown',
             reply_markup=cats_kb(page)
@@ -1381,12 +1388,12 @@ def handle_callback(update, context):
             prem = is_premium(uid)
             status = "✅ Premium" if prem else "🔒 Premium gerekli"
             vids_text = "".join(f"\n{'▶️' if prem else '🔒'} {v[1].split(chr(10))[0].split('#')[0].strip()}" for v in videos) or "\n_Bu kategoride video bulunamadı._"
-            q.edit_message_text(
+            safe_edit(q, 
                 f"{emoji} *{label}*\n📊 {total} video | {status}{vids_text}",
                 parse_mode='Markdown', reply_markup=kb2
             )
         else:
-            q.edit_message_text(
+            safe_edit(q, 
                 f"{emoji} *{label}*\n\nAlt kategori seç:",
                 parse_mode='Markdown', reply_markup=kb
             )
@@ -1426,12 +1433,12 @@ def handle_callback(update, context):
             f"📊 {total} video | Sayfa {page + 1} | {status}"
             f"{vids_text}"
         )
-        q.edit_message_text(txt, parse_mode='Markdown', reply_markup=kb)
+        safe_edit(q, txt, parse_mode='Markdown', reply_markup=kb)
 
     elif data.startswith("sendvid:"):
         vid_id = int(data.split(":")[1])
         if not is_premium(uid):
-            q.edit_message_text(
+            safe_edit(q, 
                 "🔒 *Bu video premium üyelere özeldir.*\n\nPremium almak için:",
                 parse_mode='Markdown',
                 reply_markup=packages_kb()
@@ -1441,7 +1448,7 @@ def handle_callback(update, context):
         cur.execute("SELECT title,file_id,category FROM videos WHERE id=%s", (vid_id,))
         row = cur.fetchone()
         if not row:
-            q.edit_message_text("❌ Video bulunamadı.", reply_markup=main_menu_kb(uid))
+            safe_edit(q, "❌ Video bulunamadı.", reply_markup=main_menu_kb(uid))
             return
         title, file_id, category = row
         log_view(vid_id, uid, category)
@@ -1452,7 +1459,7 @@ def handle_callback(update, context):
                 parse_mode='Markdown'
             )
             _record_sent(uid, vid_id, sent.message_id)
-            q.edit_message_text(
+            safe_edit(q, 
                 f"✅ *{title}* gönderildi!",
                 parse_mode='Markdown',
                 reply_markup=with_menu([
@@ -1460,7 +1467,7 @@ def handle_callback(update, context):
                 ])
             )
         except Exception as e:
-            q.edit_message_text(f"❌ Gönderilemedi: {e}", reply_markup=main_menu_kb(uid))
+            safe_edit(q, f"❌ Gönderilemedi: {e}", reply_markup=main_menu_kb(uid))
 
     elif data == "menu_prem":
         prem = is_premium(uid)
@@ -1479,17 +1486,17 @@ def handle_callback(update, context):
                 f"Premium alarak tüm içeriklere sansürsüz erişebilirsin."
             )
             kb = with_menu([[telegram.InlineKeyboardButton("⭐ Premium Al", callback_data="menu_buy")]])
-        q.edit_message_text(txt, parse_mode='Markdown', reply_markup=kb)
+        safe_edit(q, txt, parse_mode='Markdown', reply_markup=kb)
 
     elif data == "menu_buy":
         pkgs = get_active_packages()
         if not pkgs:
-            q.edit_message_text("⚠️ Şu an aktif paket bulunmuyor.", reply_markup=with_menu([]))
+            safe_edit(q, "⚠️ Şu an aktif paket bulunmuyor.", reply_markup=with_menu([]))
             return
         txt = "🛒 *Premium Paketler*\n\nTelegram Stars ile ödeme yap:\n"
         for pid, name, stars, days in pkgs:
             txt += f"\n⭐ {stars} Stars → *{name}* ({days} gün)"
-        q.edit_message_text(txt, parse_mode='Markdown', reply_markup=packages_kb())
+        safe_edit(q, txt, parse_mode='Markdown', reply_markup=packages_kb())
 
     elif data.startswith("buypkg:"):
         pkg_id = int(data.split(":")[1])
@@ -1510,7 +1517,7 @@ def handle_callback(update, context):
                 currency="XTR",
                 prices=[telegram.LabeledPrice(label=name, amount=stars)],
             )
-            q.edit_message_text(
+            safe_edit(q, 
                 f"✅ *{name}* için ödeme talebi gönderildi!\n\nTelegram üzerinden Stars ile ödeme yap.",
                 parse_mode='Markdown',
                 reply_markup=with_menu([])
@@ -1542,7 +1549,7 @@ def handle_callback(update, context):
         share_text = urllib.parse.quote(f"{BOT_NAME}'e katıl, ücretsiz premium kazan!")
         share_url = urllib.parse.quote(ref_link)
         kb = with_menu([[telegram.InlineKeyboardButton("📤 Linki Paylaş", url=f"https://t.me/share/url?url={share_url}&text={share_text}")]])
-        q.edit_message_text(txt, parse_mode='Markdown', reply_markup=kb)
+        safe_edit(q, txt, parse_mode='Markdown', reply_markup=kb)
 
     elif data == "menu_destek":
         txt = (
@@ -1553,7 +1560,7 @@ def handle_callback(update, context):
             f"_Yanıt süresi: 24 saat içinde_"
         )
         kb = with_menu([[telegram.InlineKeyboardButton("📱 Mini App — Destek", web_app=telegram.WebAppInfo(url=WEBAPP_URL + "?page=destek"))]])
-        q.edit_message_text(txt, parse_mode='Markdown', reply_markup=kb)
+        safe_edit(q, txt, parse_mode='Markdown', reply_markup=kb)
 
 def herkeseprem_cmd(update, context):
     if update.effective_user.id != ADMIN_ID:
