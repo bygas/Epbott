@@ -65,6 +65,7 @@ for sql in[
 "CREATE TABLE IF NOT EXISTS support_messages (id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER,message TEXT,status TEXT DEFAULT 'open',created_at TEXT,reply_text TEXT,replied_at TEXT)",
 "CREATE TABLE IF NOT EXISTS support_chat (id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER,sender TEXT,message TEXT,sent_at TEXT)",
 "CREATE TABLE IF NOT EXISTS referrals (id INTEGER PRIMARY KEY AUTOINCREMENT,referrer_id INTEGER,referred_id INTEGER UNIQUE,joined_at TEXT,join_rewarded INTEGER DEFAULT 0,purchase_rewarded INTEGER DEFAULT 0)",
+"CREATE TABLE IF NOT EXISTS support_forward_map (admin_msg_id INTEGER PRIMARY KEY, user_id INTEGER, user_name TEXT, created_at TEXT)",
 ]:
     c.execute(sql)
 
@@ -1626,6 +1627,67 @@ def successful_payment(update,context):
     except:pass
     logger.info(f"Premium verildi (Stars odeme): user={uid} pkg={pname} days={days} stars={stars}")
 
+def handle_user_support_message(update,context):
+    """Kullanıcıdan gelen metin mesajını admin'e ilet."""
+    msg=update.message
+    if not msg or not msg.text:return
+    uid=msg.from_user.id
+    if uid==ADMIN_ID:return  # Admin'in kendi mesajı değil
+    fn=msg.from_user.first_name or "?"
+    un=('@'+msg.from_user.username) if msg.from_user.username else f"id:{uid}"
+    now=datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    # DB'ye kaydet
+    db,cur=get_db()
+    cur.execute("INSERT INTO support_chat (user_id,sender,message,sent_at) VALUES (?,'user',?,?)",(uid,msg.text,now))
+    db.commit()
+    # Admin'e ilet
+    try:
+        header=f"💬 *Destek Mesajı*\n👤 {fn} | {un}\n🆔 `{uid}`\n\n"
+        sent=bot_instance.send_message(
+            ADMIN_ID,
+            header+msg.text,
+            parse_mode='Markdown'
+        )
+        # Mapping kaydet: admin'e giden mesaj id → user_id
+        cur.execute(
+            "INSERT OR REPLACE INTO support_forward_map (admin_msg_id,user_id,user_name,created_at) VALUES (?,?,?,?)",
+            (sent.message_id, uid, f"{fn} {un}", now)
+        )
+        db.commit()
+        # Kullanıcıya bildir
+        msg.reply_text("✅ Mesajın alındı, en kısa sürede yanıtlanacak.")
+    except Exception as e:
+        logger.error(f"[destek] admin'e iletme hatası: {e}")
+
+def handle_admin_reply(update,context):
+    """Admin'in reply attığı mesaj bir destek forward'ıysa, kullanıcıya gönder."""
+    msg=update.message
+    if not msg or msg.from_user.id!=ADMIN_ID:return
+    if not msg.reply_to_message:return
+    replied_id=msg.reply_to_message.message_id
+    db,cur=get_db()
+    cur.execute("SELECT user_id,user_name FROM support_forward_map WHERE admin_msg_id=?",(replied_id,))
+    row=cur.fetchone()
+    if not row:return  # Bu bir destek forward'ı değil
+    target_uid,user_name=row
+    reply_text=msg.text or msg.caption or ""
+    if not reply_text:return
+    now=datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    try:
+        kb=[[telegram.InlineKeyboardButton(f"🎬 {BOT_NAME}'i Aç",web_app=telegram.WebAppInfo(url=WEBAPP_URL))]]
+        bot_instance.send_message(
+            target_uid,
+            f"📩 *Destek Yanıtı*\n\n{reply_text}",
+            parse_mode='Markdown',
+            reply_markup=telegram.InlineKeyboardMarkup(kb)
+        )
+        # support_chat'e kaydet
+        cur.execute("INSERT INTO support_chat (user_id,sender,message,sent_at) VALUES (?,'admin',?,?)",(target_uid,reply_text,now))
+        db.commit()
+        msg.reply_text(f"✅ Yanıt gönderildi → {user_name}")
+    except Exception as e:
+        msg.reply_text(f"❌ Gönderilemedi: {e}")
+
 def log_every_update(update,context):
     """HER gelen update'i logla (debug)."""
     uid=update.update_id
@@ -1704,6 +1766,16 @@ def main():
     dp.add_handler(ChannelPostHandler(handle_channel_post_any))
     dp.add_handler(MessageHandler(Filters.photo & Filters.chat_type.private,handle_photo))
     dp.add_handler(MessageHandler(Filters.video & Filters.chat_type.private,handle_video))
+    # Destek: admin reply → kullanıcıya gönder (önce kontrol et)
+    dp.add_handler(MessageHandler(
+        Filters.text & Filters.chat_type.private & Filters.reply,
+        handle_admin_reply
+    ), group=1)
+    # Destek: kullanıcı mesajı → admin'e ilet
+    dp.add_handler(MessageHandler(
+        Filters.text & Filters.chat_type.private & ~Filters.command,
+        handle_user_support_message
+    ), group=2)
     dp.add_handler(MessageHandler(Filters.all,log_every_update),group=3)
     # Stars odeme handler'lari
     from telegram.ext import PreCheckoutQueryHandler
