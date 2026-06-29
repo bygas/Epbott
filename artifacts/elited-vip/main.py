@@ -1247,6 +1247,82 @@ def handle_callback(update,context):
         kb=with_menu([[telegram.InlineKeyboardButton("📱 Mini App — Destek",web_app=telegram.WebAppInfo(url=WEBAPP_URL+"?page=destek"))]])
         q.edit_message_text(txt,parse_mode='Markdown',reply_markup=kb)
 
+def duyuru_cmd(update,context):
+    """Admin duyurusu: /duyuru <mesaj> — tüm kullanıcılara gönderir."""
+    if update.effective_user.id!=ADMIN_ID:return update.message.reply_text("❌ Sadece admin.")
+    args=context.args
+    if not args:
+        return update.message.reply_text(
+            "📢 *Duyuru Komutu*\n\n"
+            "Kullanım:\n"
+            "`/duyuru <mesaj>` → Tüm kullanıcılara\n"
+            "`/duyuruvip <mesaj>` → Yalnızca premium üyelere",
+            parse_mode='Markdown'
+        )
+    msg_text=' '.join(args)
+    db,cur=get_db()
+    cur.execute("SELECT user_id,first_name FROM users")
+    all_users=cur.fetchall()
+    status_msg=update.message.reply_text(f"⏳ Gönderiliyor... 0/{len(all_users)}")
+    sent=0;fail=0
+    for i,(uid,fn) in enumerate(all_users):
+        try:
+            bot_instance.send_message(
+                uid,
+                f"📢 *{BOT_NAME} — Duyuru*\n\n{msg_text}",
+                parse_mode='Markdown',
+                reply_markup=with_menu([])
+            )
+            sent+=1
+        except:
+            fail+=1
+        if (i+1)%10==0:
+            try:status_msg.edit_text(f"⏳ Gönderiliyor... {i+1}/{len(all_users)}")
+            except:pass
+    status_msg.edit_text(
+        f"✅ *Duyuru Tamamlandı!*\n\n"
+        f"👥 Toplam: {len(all_users)}\n"
+        f"✅ Gönderildi: {sent}\n"
+        f"❌ Başarısız: {fail}",
+        parse_mode='Markdown'
+    )
+
+def duyuruvip_cmd(update,context):
+    """Admin duyurusu: /duyuruvip <mesaj> — yalnızca premium üyelere gönderir."""
+    if update.effective_user.id!=ADMIN_ID:return update.message.reply_text("❌ Sadece admin.")
+    args=context.args
+    if not args:return update.message.reply_text("Kullanım: `/duyuruvip <mesaj>`",parse_mode='Markdown')
+    msg_text=' '.join(args)
+    db,cur=get_db()
+    now=datetime.datetime.now().strftime('%Y-%m-%d')
+    cur.execute("SELECT user_id,first_name FROM users WHERE premium_date > ?",(now,))
+    prem_users=cur.fetchall()
+    if not prem_users:
+        return update.message.reply_text("⚠️ Şu an aktif premium kullanıcı yok.")
+    status_msg=update.message.reply_text(f"⏳ VIP duyurusu gönderiliyor... 0/{len(prem_users)}")
+    sent=0;fail=0
+    for i,(uid,fn) in enumerate(prem_users):
+        try:
+            bot_instance.send_message(
+                uid,
+                f"⭐ *{BOT_NAME} — VIP Duyuru*\n\n{msg_text}",
+                parse_mode='Markdown',
+                reply_markup=with_menu([])
+            )
+            sent+=1
+        except:
+            fail+=1
+        if (i+1)%10==0:
+            try:status_msg.edit_text(f"⏳ VIP duyurusu gönderiliyor... {i+1}/{len(prem_users)}")
+            except:pass
+    status_msg.edit_text(
+        f"✅ *VIP Duyurusu Tamamlandı!*\n\n"
+        f"👑 Premium üye: {len(prem_users)}\n"
+        f"✅ Gönderildi: {sent}\n"
+        f"❌ Başarısız: {fail}",
+        parse_mode='Markdown'
+    )
+
 def menu_cmd(update,context):
     uid=update.effective_user.id
     fn=update.effective_user.first_name or "VIP"
@@ -1623,6 +1699,8 @@ def main():
     dp.add_handler(CommandHandler('bundle',bundle_cmd))
     dp.add_handler(CommandHandler('donebundle',donebundle_cmd))
     dp.add_handler(CommandHandler('yanit',yanit_cmd))
+    dp.add_handler(CommandHandler('duyuru',duyuru_cmd))
+    dp.add_handler(CommandHandler('duyuruvip',duyuruvip_cmd))
     dp.add_handler(ChannelPostHandler(handle_channel_post_any))
     dp.add_handler(MessageHandler(Filters.photo & Filters.chat_type.private,handle_photo))
     dp.add_handler(MessageHandler(Filters.video & Filters.chat_type.private,handle_video))
@@ -1636,6 +1714,8 @@ def main():
         bot_instance.set_my_commands([
             telegram.BotCommand('start','Botu başlat / Ana menü'),
             telegram.BotCommand('menu','📋 Ana menüyü aç'),
+            telegram.BotCommand('duyuru','📢 Tüm kullanıcılara duyuru gönder (admin)'),
+            telegram.BotCommand('duyuruvip','⭐ Sadece premium üyelere duyuru (admin)'),
         ])
     except Exception as e:
         logger.warning(f"set_my_commands hatası: {e}")
