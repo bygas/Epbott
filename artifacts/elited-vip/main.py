@@ -1906,7 +1906,14 @@ def yanit_cmd(update,context):
 
 @app.route('/ping')
 def ping():
-    return jsonify({'ok':True,'status':'alive'})
+    # DB'ye hafif dokunuş yaparak container'ı gerçekten uyanık tut
+    try:
+        db,cur=get_db()
+        cur.execute("SELECT COUNT(*) FROM users")
+        user_count=cur.fetchone()[0]
+    except:
+        user_count=0
+    return jsonify({'ok':True,'status':'alive','users':user_count,'ts':datetime.datetime.now().isoformat()})
 
 def keep_alive_loop():
     import time
