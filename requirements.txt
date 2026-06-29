@@ -1,4 +1,0 @@
-python-telegram-bot==13.7 
-flask
-flask-cors
-requests
