@@ -2301,6 +2301,14 @@ def yanit_cmd(update, context):
     except Exception as e:
         update.message.reply_text(f"❌ Hata: {e}")
 
+@app.route('/debug')
+def debug():
+    return jsonify({
+        'WEBAPP_URL': WEBAPP_URL,
+        'RENDER_EXTERNAL_URL': os.environ.get('RENDER_EXTERNAL_URL', ''),
+        'WEBAPP_URL_ENV': os.environ.get('WEBAPP_URL', ''),
+    })
+
 @app.route('/ping')
 def ping():
     try:
