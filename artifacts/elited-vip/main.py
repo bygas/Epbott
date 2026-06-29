@@ -22,6 +22,11 @@ if not ADMIN_ID:
     raise RuntimeError("ADMIN_ID environment variable is not set!")
 
 def _detect_webapp_url():
+    # Render.com
+    render_url = os.environ.get('RENDER_EXTERNAL_URL', '')
+    if render_url:
+        return render_url.rstrip('/')
+    # Replit
     for d in os.environ.get('REPLIT_DOMAINS', '').split(','):
         d = d.strip()
         if d.endswith('.replit.app'):
