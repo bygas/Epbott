@@ -1913,10 +1913,10 @@ def keep_alive_loop():
     port=int(os.environ.get('PORT',5000))
     url=f'http://127.0.0.1:{port}/ping'
     while True:
-        time.sleep(270)
+        time.sleep(300)
         try:
             req_lib.get(url,timeout=10)
-            logger.info('[keep-alive] ping OK')
+            logger.info('[keep-alive] ping OK (5dk)')
         except Exception as e:
             logger.warning(f'[keep-alive] ping hatasi: {e}')
 
