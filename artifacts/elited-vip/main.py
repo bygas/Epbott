@@ -892,6 +892,303 @@ def process_referral_purchase(buyer_id,pkg_days):
             except:pass
     except Exception as e:logger.error(f"Referral purchase error: {e}")
 
+# ══════════════════════════════════════════
+# INLINE MENU SİSTEMİ
+# ══════════════════════════════════════════
+
+def main_menu_kb(uid):
+    prem=is_premium(uid)
+    rows=[
+        [
+            telegram.InlineKeyboardButton("📁 Kategoriler",callback_data="menu_cats:0"),
+            telegram.InlineKeyboardButton("⭐ Durumum",callback_data="menu_prem"),
+        ],
+        [
+            telegram.InlineKeyboardButton("🔗 Referans",callback_data="menu_ref"),
+            telegram.InlineKeyboardButton("💬 Destek",callback_data="menu_destek"),
+        ],
+    ]
+    if not prem:
+        rows.append([telegram.InlineKeyboardButton("🛒 Premium Satın Al",callback_data="menu_buy")])
+    rows.append([telegram.InlineKeyboardButton(f"🔥 {BOT_NAME}'i Aç (Mini App)",web_app=telegram.WebAppInfo(url=WEBAPP_URL))])
+    return telegram.InlineKeyboardMarkup(rows)
+
+def cats_kb(page=0,per_page=8):
+    cats=get_categories()
+    counts=get_video_counts()
+    total=len(cats)
+    start_i=page*per_page
+    end_i=min(start_i+per_page,total)
+    chunk=cats[start_i:end_i]
+    rows=[]
+    for i in range(0,len(chunk),2):
+        row=[]
+        for cat in chunk[i:i+2]:
+            cid,slug,label,emoji=cat
+            cnt=counts.get(slug,0)
+            row.append(telegram.InlineKeyboardButton(
+                f"{emoji or '📁'} {label} ({cnt})",
+                callback_data=f"cat:{slug}:0"
+            ))
+        rows.append(row)
+    nav=[]
+    if page>0:nav.append(telegram.InlineKeyboardButton("◀️ Önceki",callback_data=f"menu_cats:{page-1}"))
+    if end_i<total:nav.append(telegram.InlineKeyboardButton("Sonraki ▶️",callback_data=f"menu_cats:{page+1}"))
+    if nav:rows.append(nav)
+    rows.append([telegram.InlineKeyboardButton("🏠 Ana Menü",callback_data="menu_main")])
+    return telegram.InlineKeyboardMarkup(rows)
+
+def _videos_in_cat(slug,page=0,per_page=6):
+    db,cur=get_db()
+    cur.execute("SELECT id,title FROM videos WHERE category=? ORDER BY id DESC LIMIT ? OFFSET ?",(slug,per_page,page*per_page))
+    videos=cur.fetchall()
+    cur.execute("SELECT COUNT(*) FROM videos WHERE category=?",(slug,))
+    total=cur.fetchone()[0]
+    return videos,total
+
+def videos_kb(slug,page=0,uid=None,per_page=6):
+    prem=is_premium(uid) if uid else False
+    videos,total=_videos_in_cat(slug,page,per_page)
+    rows=[]
+    for vid_id,title in videos:
+        short=title[:28]+"…" if len(title)>30 else title
+        if prem:
+            rows.append([telegram.InlineKeyboardButton(f"▶️ {short}",callback_data=f"sendvid:{vid_id}")])
+        else:
+            rows.append([telegram.InlineKeyboardButton(f"🔒 {short}",callback_data="menu_buy")])
+    nav=[]
+    if page>0:nav.append(telegram.InlineKeyboardButton("◀️ Önceki",callback_data=f"cat:{slug}:{page-1}"))
+    if (page+1)*per_page<total:nav.append(telegram.InlineKeyboardButton("Sonraki ▶️",callback_data=f"cat:{slug}:{page+1}"))
+    if nav:rows.append(nav)
+    rows.append([
+        telegram.InlineKeyboardButton("📁 Kategoriler",callback_data="menu_cats:0"),
+        telegram.InlineKeyboardButton("🏠 Ana Menü",callback_data="menu_main"),
+    ])
+    return telegram.InlineKeyboardMarkup(rows),videos,total
+
+def packages_kb():
+    pkgs=get_active_packages()
+    rows=[]
+    for pid,name,stars,days in pkgs:
+        rows.append([telegram.InlineKeyboardButton(
+            f"⭐ {stars} Stars → {name} ({days} gün)",
+            callback_data=f"buypkg:{pid}"
+        )])
+    rows.append([telegram.InlineKeyboardButton("🏠 Ana Menü",callback_data="menu_main")])
+    return telegram.InlineKeyboardMarkup(rows)
+
+def handle_callback(update,context):
+    q=update.callback_query
+    uid=q.from_user.id
+    data=q.data
+    q.answer()
+
+    # Ana Menü
+    if data=="menu_main":
+        q.edit_message_text(
+            f"🔥 *{BOT_NAME} — Ana Menü*\n\nAşağıdan bir işlem seç:",
+            parse_mode='Markdown',
+            reply_markup=main_menu_kb(uid)
+        )
+
+    # Kategoriler listesi
+    elif data.startswith("menu_cats:"):
+        page=int(data.split(":")[1])
+        cats=get_categories()
+        q.edit_message_text(
+            f"📁 *Kategoriler* ({len(cats)} kategori)\n\nBir kategori seç:",
+            parse_mode='Markdown',
+            reply_markup=cats_kb(page)
+        )
+
+    # Kategori içeriği
+    elif data.startswith("cat:"):
+        parts=data.split(":")
+        slug=parts[1]
+        page=int(parts[2]) if len(parts)>2 else 0
+        prem=is_premium(uid)
+        kb,videos,total=videos_kb(slug,page,uid)
+        db,cur=get_db()
+        cur.execute("SELECT label,emoji FROM categories WHERE slug=?",(slug,))
+        row=cur.fetchone()
+        label=row[0] if row else slug
+        emoji=(row[1] or '📁') if row else '📁'
+        status="✅ Premium — izleyebilirsin" if prem else "🔒 Premium gerekli — kilidi aç"
+        vids_text=""
+        for vid_id,title in videos:
+            ic='▶️' if prem else '🔒'
+            vids_text+=f"\n{ic} {title}"
+        if not videos:
+            vids_text="\n_Bu kategoride video bulunamadı._"
+        txt=(
+            f"{emoji} *{label}*\n"
+            f"📊 Toplam {total} video | Sayfa {page+1}\n"
+            f"👤 {status}\n"
+            f"{vids_text}"
+        )
+        q.edit_message_text(txt,parse_mode='Markdown',reply_markup=kb)
+
+    # Video gönder
+    elif data.startswith("sendvid:"):
+        vid_id=int(data.split(":")[1])
+        if not is_premium(uid):
+            q.edit_message_text(
+                "🔒 *Bu video premium üyelere özeldir.*\n\nPremium almak için:",
+                parse_mode='Markdown',
+                reply_markup=packages_kb()
+            )
+            return
+        db,cur=get_db()
+        cur.execute("SELECT title,file_id,category FROM videos WHERE id=?",(vid_id,))
+        row=cur.fetchone()
+        if not row:
+            q.edit_message_text("❌ Video bulunamadı.",reply_markup=main_menu_kb(uid))
+            return
+        title,file_id,category=row
+        log_view(vid_id,uid,category)
+        try:
+            sent=bot_instance.send_video(
+                uid,video=file_id,
+                caption=f"🎬 *{title}*\n\n_{BOT_NAME}_",
+                parse_mode='Markdown'
+            )
+            _record_sent(uid,vid_id,sent.message_id)
+            q.edit_message_text(
+                f"✅ *{title}* gönderildi!",
+                parse_mode='Markdown',
+                reply_markup=telegram.InlineKeyboardMarkup([
+                    [telegram.InlineKeyboardButton("📁 Kategorilere Dön",callback_data="menu_cats:0")],
+                    [telegram.InlineKeyboardButton("🏠 Ana Menü",callback_data="menu_main")],
+                ])
+            )
+        except Exception as e:
+            q.edit_message_text(f"❌ Gönderilemedi: {e}",reply_markup=main_menu_kb(uid))
+
+    # Premium durumu
+    elif data=="menu_prem":
+        prem=is_premium(uid)
+        if prem:
+            rem=days_remaining(uid)
+            txt=(
+                f"⭐ *Premium Durumun*\n\n"
+                f"✅ Aktif — *{rem} gün* kaldı\n\n"
+                f"Premium üyeliğin süresince tüm içeriklere erişebilirsin."
+            )
+            kb=telegram.InlineKeyboardMarkup([
+                [telegram.InlineKeyboardButton("🛒 Süre Uzat",callback_data="menu_buy")],
+                [telegram.InlineKeyboardButton("🏠 Ana Menü",callback_data="menu_main")],
+            ])
+        else:
+            txt=(
+                f"🔒 *Premium Durumun*\n\n"
+                f"❌ Aktif premium üyeliğin yok.\n\n"
+                f"Premium alarak tüm içeriklere sansürsüz erişebilirsin."
+            )
+            kb=telegram.InlineKeyboardMarkup([
+                [telegram.InlineKeyboardButton("⭐ Premium Al",callback_data="menu_buy")],
+                [telegram.InlineKeyboardButton("🏠 Ana Menü",callback_data="menu_main")],
+            ])
+        q.edit_message_text(txt,parse_mode='Markdown',reply_markup=kb)
+
+    # Paket listesi
+    elif data=="menu_buy":
+        pkgs=get_active_packages()
+        if not pkgs:
+            q.edit_message_text(
+                "⚠️ Şu an aktif paket bulunmuyor.",
+                reply_markup=telegram.InlineKeyboardMarkup([[
+                    telegram.InlineKeyboardButton("🏠 Ana Menü",callback_data="menu_main")
+                ]])
+            )
+            return
+        txt="🛒 *Premium Paketler*\n\nTelegram Stars ile ödeme yap:\n"
+        for pid,name,stars,days in pkgs:
+            txt+=f"\n⭐ {stars} Stars → *{name}* ({days} gün)"
+        q.edit_message_text(txt,parse_mode='Markdown',reply_markup=packages_kb())
+
+    # Stars faturası oluştur
+    elif data.startswith("buypkg:"):
+        pkg_id=int(data.split(":")[1])
+        db,cur=get_db()
+        cur.execute("SELECT name,stars,days FROM packages WHERE id=? AND active=1",(pkg_id,))
+        pkg=cur.fetchone()
+        if not pkg:
+            q.answer("❌ Paket bulunamadı!",show_alert=True)
+            return
+        name,stars,days=pkg
+        try:
+            bot_instance.send_invoice(
+                chat_id=uid,
+                title=f"⭐ {name}",
+                description=f"{BOT_NAME} — {days} gün premium erişim",
+                payload=f"premium_{uid}_{pkg_id}_{days}",
+                provider_token="",
+                currency="XTR",
+                prices=[telegram.LabeledPrice(label=name,amount=stars)],
+            )
+            q.edit_message_text(
+                f"✅ *{name}* için ödeme talebi gönderildi!\n\nTelegram üzerinden Stars ile ödeme yap.",
+                parse_mode='Markdown',
+                reply_markup=telegram.InlineKeyboardMarkup([[
+                    telegram.InlineKeyboardButton("🏠 Ana Menü",callback_data="menu_main")
+                ]])
+            )
+        except Exception as e:
+            q.answer(f"❌ Hata: {e}",show_alert=True)
+
+    # Referans
+    elif data=="menu_ref":
+        try:bot_un=bot_instance.get_me().username or BOT_USERNAME
+        except:bot_un=BOT_USERNAME
+        ref_link=f"https://t.me/{bot_un}?start=ref_{uid}"
+        db,cur=get_db()
+        cur.execute("SELECT COUNT(*) FROM referrals WHERE referrer_id=?",(uid,))
+        ref_count=cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM referrals WHERE referrer_id=? AND join_rewarded=1",(uid,))
+        rewarded=cur.fetchone()[0]
+        txt=(
+            f"🔗 *Referans Linkin*\n\n"
+            f"`{ref_link}`\n\n"
+            f"👥 Davet ettiğin: *{ref_count} kişi*\n"
+            f"🎁 Ödül aldığın: *{rewarded} kişi*\n\n"
+            f"📌 *Kurallar:*\n"
+            f"• Davet ettiğin kişi katılırsa → +1 gün\n"
+            f"• Davet ettiğin kişi paket alırsa → paketin yarısı kadar gün"
+        )
+        import urllib.parse
+        share_text=urllib.parse.quote(f"{BOT_NAME}'e katıl, ücretsiz premium kazan!")
+        share_url=urllib.parse.quote(ref_link)
+        kb=telegram.InlineKeyboardMarkup([
+            [telegram.InlineKeyboardButton("📤 Linki Paylaş",url=f"https://t.me/share/url?url={share_url}&text={share_text}")],
+            [telegram.InlineKeyboardButton("🏠 Ana Menü",callback_data="menu_main")],
+        ])
+        q.edit_message_text(txt,parse_mode='Markdown',reply_markup=kb)
+
+    # Destek
+    elif data=="menu_destek":
+        txt=(
+            f"💬 *Destek*\n\n"
+            f"Sorun veya öneriniz için:\n\n"
+            f"📱 Mini App → Destek sekmesine yaz\n"
+            f"📩 Direkt bot'a mesaj at, ekibimiz yanıtlar\n\n"
+            f"_Yanıt süresi: 24 saat içinde_"
+        )
+        kb=telegram.InlineKeyboardMarkup([
+            [telegram.InlineKeyboardButton("📱 Mini App — Destek",web_app=telegram.WebAppInfo(url=WEBAPP_URL+"?page=destek"))],
+            [telegram.InlineKeyboardButton("🏠 Ana Menü",callback_data="menu_main")],
+        ])
+        q.edit_message_text(txt,parse_mode='Markdown',reply_markup=kb)
+
+def menu_cmd(update,context):
+    uid=update.effective_user.id
+    fn=update.effective_user.first_name or "VIP"
+    save_user_info(uid,fn,update.effective_user.username)
+    update.message.reply_text(
+        f"🔥 *{BOT_NAME} — Ana Menü*\n\nMerhaba, {fn}! Aşağıdan bir işlem seç:",
+        parse_mode='Markdown',
+        reply_markup=main_menu_kb(uid)
+    )
+
 def start(update,context):
     uid=update.effective_user.id;fn=update.effective_user.first_name or "VIP";un=update.effective_user.username
     save_user_info(uid,fn,un)
@@ -904,34 +1201,32 @@ def start(update,context):
             process_referral_join(uid,referrer_id)
         except:pass
     prem=is_premium(uid)
-    kb=[[telegram.InlineKeyboardButton(f"\ud83d\udd25 {BOT_NAME}'i A\u00e7",web_app=telegram.WebAppInfo(url=WEBAPP_URL))]]
-    if not prem:kb.append([telegram.InlineKeyboardButton(f"\u2b50 Premium Al — Sansursuz Erisim",web_app=telegram.WebAppInfo(url=WEBAPP_URL+"?page=premium"))])
     if is_new:
         t=(
-            f"\ud83d\udd25 *Hosgeldin, {fn}!*\n\n"
-            f"*{BOT_NAME}*'e katildin — Telegram'in en ozel icerikleri burada.\n\n"
-            f"\ud83c\udf81 *{FREE_DAYS} gun ucretsiz premium* hediye!\n"
-            f"Simdi uygulamayi ac, arsive goz at.\n\n"
-            f"\u26a0\ufe0f Bu bot yalnizca *18+* kullanicilara yoneliktir."
+            f"🔥 *Hoşgeldin, {fn}!*\n\n"
+            f"*{BOT_NAME}*'e katıldın — Telegram'ın en özel içerikleri burada.\n\n"
+            f"🎁 *{FREE_DAYS} gün ücretsiz premium* hediye!\n"
+            f"Aşağıdaki butonlardan içeriklere göz at.\n\n"
+            f"⚠️ Bu bot yalnızca *18+* kullanıcılara yöneliktir."
         )
     elif prem:
         rem=days_remaining(uid)
         t=(
-            f"\ud83d\udd25 *Hosgeldin, {fn}!*\n\n"
-            f"\u2705 Premium uyeligin aktif — *{rem} gun* kaldi.\n\n"
-            f"Asagidan uygulamayi acarak arsive erisebilirsin."
+            f"🔥 *Hoşgeldin, {fn}!*\n\n"
+            f"✅ Premium üyeliğin aktif — *{rem} gün* kaldı.\n\n"
+            f"Aşağıdaki butonlardan içeriklere erişebilirsin."
         )
     else:
         t=(
-            f"\ud83d\udd25 *Hosgeldin, {fn}!*\n\n"
-            f"*{BOT_NAME}* — Telegram'in en buyuk yetiskin icerikleri arsivi.\n\n"
-            f"\ud83d\udd12 *Binlerce ozel video*, sansursuz erisim\n"
-            f"\u26a1 Odeme yapar yapmaz aninda aktif\n"
-            f"\ud83d\udee1\ufe0f Indirme korumalı — tamamen gizli\n\n"
-            f"\u2b50 Premium al, simdi erisim kazan.\n\n"
-            f"\u26a0\ufe0f *18+ iceriktir.* Devam ederek yetiskin oldugunu onayliyorsun."
+            f"🔥 *Hoşgeldin, {fn}!*\n\n"
+            f"*{BOT_NAME}* — Telegram'ın en büyük içerik arşivi.\n\n"
+            f"🔒 *Binlerce özel video*, sansürsüz erişim\n"
+            f"⚡ Ödeme yapar yapmaz anında aktif\n"
+            f"🛡️ İndirme korumalı — tamamen gizli\n\n"
+            f"⭐ Premium al, şimdi erişim kazan.\n\n"
+            f"⚠️ *18+ içeriktir.* Devam ederek yetişkin olduğunu onaylıyorsun."
         )
-    update.message.reply_text(t,parse_mode='Markdown',reply_markup=telegram.InlineKeyboardMarkup(kb))
+    update.message.reply_text(t,parse_mode='Markdown',reply_markup=main_menu_kb(uid))
 
 def admin_cmd(update,context):
     if update.effective_user.id!=ADMIN_ID:return update.message.reply_text("\u274c Sadece admin.")
@@ -1249,7 +1544,10 @@ def main():
     try:BOT_USERNAME=bot_instance.get_me().username or ''
     except:pass
     dp=updater.dispatcher
+    from telegram.ext import CallbackQueryHandler
     dp.add_handler(CommandHandler('start',start))
+    dp.add_handler(CommandHandler('menu',menu_cmd))
+    dp.add_handler(CallbackQueryHandler(handle_callback))
     dp.add_handler(CommandHandler('admin',admin_cmd))
     dp.add_handler(CommandHandler('yukle',video_yukle))
     dp.add_handler(CommandHandler('setchannel',setchannel_cmd))
