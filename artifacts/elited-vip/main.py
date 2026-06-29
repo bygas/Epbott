@@ -209,11 +209,25 @@ def get_view_stats():
     daily=c.fetchall()
     return {'top_videos':top_videos,'top_categories':top_cats,'unique_viewers':unique_viewers,'total_views':total_views,'daily':daily}
 
+def _menu_btn():
+    return telegram.InlineKeyboardButton("🏠 Ana Menü",callback_data="menu_main")
+
+def with_menu(rows):
+    """Verilen satır listesinin sonuna 🏠 Ana Menü butonu ekler ve InlineKeyboardMarkup döndürür."""
+    rows=list(rows)
+    has=any(
+        any(getattr(b,'callback_data',None)=='menu_main' for b in row)
+        for row in rows
+    )
+    if not has:
+        rows.append([_menu_btn()])
+    return telegram.InlineKeyboardMarkup(rows)
+
 def build_nav(user_id,is_main=False):
     rows=[]
-    if not is_main:rows.append([telegram.InlineKeyboardButton("\ud83c\udfe0 Ana Men\u00fc",web_app=telegram.WebAppInfo(url=WEBAPP_URL))])
-    if not is_premium(user_id):rows.append([telegram.InlineKeyboardButton("\u2b50 Premium Ol",web_app=telegram.WebAppInfo(url=WEBAPP_URL+"?page=premium"))])
-    return telegram.InlineKeyboardMarkup(rows) if rows else None
+    if not is_main:rows.append([telegram.InlineKeyboardButton("🏠 Ana Menü",callback_data="menu_main")])
+    if not is_premium(user_id):rows.append([telegram.InlineKeyboardButton("⭐ Premium Ol",web_app=telegram.WebAppInfo(url=WEBAPP_URL+"?page=premium"))])
+    return telegram.InlineKeyboardMarkup(rows)
 
 # ── user app ──
 
@@ -948,8 +962,7 @@ def cats_kb(page=0,per_page=8):
     if page>0:nav.append(telegram.InlineKeyboardButton("◀️ Önceki",callback_data=f"menu_cats:{page-1}"))
     if end_i<total:nav.append(telegram.InlineKeyboardButton("Sonraki ▶️",callback_data=f"menu_cats:{page+1}"))
     if nav:rows.append(nav)
-    rows.append([telegram.InlineKeyboardButton("🏠 Ana Menü",callback_data="menu_main")])
-    return telegram.InlineKeyboardMarkup(rows)
+    return with_menu(rows)
 
 def subcats_kb(root_slug):
     """Bir root kategorinin alt kategorilerini listeler."""
@@ -975,11 +988,8 @@ def subcats_kb(root_slug):
             f"{emoji or '🎬'} {label} ({cnt} video)",
             callback_data=f"subcat:{slug}:0"
         )])
-    rows.append([
-        telegram.InlineKeyboardButton("📁 Kategoriler",callback_data="menu_cats:0"),
-        telegram.InlineKeyboardButton("🏠 Ana Menü",callback_data="menu_main"),
-    ])
-    return telegram.InlineKeyboardMarkup(rows),subcats
+    rows.append([telegram.InlineKeyboardButton("📁 Kategoriler",callback_data="menu_cats:0")])
+    return with_menu(rows),subcats
 
 def _videos_in_cat(slug,page=0,per_page=6):
     db,cur=get_db()
@@ -1005,11 +1015,8 @@ def videos_kb(slug,page=0,uid=None,per_page=6):
     if page>0:nav.append(telegram.InlineKeyboardButton("◀️ Önceki",callback_data=f"subcat:{slug}:{page-1}"))
     if (page+1)*per_page<total:nav.append(telegram.InlineKeyboardButton("Sonraki ▶️",callback_data=f"subcat:{slug}:{page+1}"))
     if nav:rows.append(nav)
-    rows.append([
-        telegram.InlineKeyboardButton("📁 Kategoriler",callback_data="menu_cats:0"),
-        telegram.InlineKeyboardButton("🏠 Ana Menü",callback_data="menu_main"),
-    ])
-    return telegram.InlineKeyboardMarkup(rows),videos,total
+    rows.append([telegram.InlineKeyboardButton("📁 Kategoriler",callback_data="menu_cats:0")])
+    return with_menu(rows),videos,total
 
 def packages_kb():
     pkgs=get_active_packages()
@@ -1019,8 +1026,7 @@ def packages_kb():
             f"⭐ {stars} Stars → {name} ({days} gün)",
             callback_data=f"buypkg:{pid}"
         )])
-    rows.append([telegram.InlineKeyboardButton("🏠 Ana Menü",callback_data="menu_main")])
-    return telegram.InlineKeyboardMarkup(rows)
+    return with_menu(rows)
 
 def handle_callback(update,context):
     q=update.callback_query
@@ -1035,6 +1041,7 @@ def handle_callback(update,context):
             parse_mode='Markdown',
             reply_markup=main_menu_kb(uid)
         )
+        return
 
     # Kategoriler listesi
     elif data.startswith("menu_cats:"):
@@ -1137,9 +1144,8 @@ def handle_callback(update,context):
             q.edit_message_text(
                 f"✅ *{title}* gönderildi!",
                 parse_mode='Markdown',
-                reply_markup=telegram.InlineKeyboardMarkup([
+                reply_markup=with_menu([
                     [telegram.InlineKeyboardButton("📁 Kategorilere Dön",callback_data="menu_cats:0")],
-                    [telegram.InlineKeyboardButton("🏠 Ana Menü",callback_data="menu_main")],
                 ])
             )
         except Exception as e:
@@ -1155,32 +1161,21 @@ def handle_callback(update,context):
                 f"✅ Aktif — *{rem} gün* kaldı\n\n"
                 f"Premium üyeliğin süresince tüm içeriklere erişebilirsin."
             )
-            kb=telegram.InlineKeyboardMarkup([
-                [telegram.InlineKeyboardButton("🛒 Süre Uzat",callback_data="menu_buy")],
-                [telegram.InlineKeyboardButton("🏠 Ana Menü",callback_data="menu_main")],
-            ])
+            kb=with_menu([[telegram.InlineKeyboardButton("🛒 Süre Uzat",callback_data="menu_buy")]])
         else:
             txt=(
                 f"🔒 *Premium Durumun*\n\n"
                 f"❌ Aktif premium üyeliğin yok.\n\n"
                 f"Premium alarak tüm içeriklere sansürsüz erişebilirsin."
             )
-            kb=telegram.InlineKeyboardMarkup([
-                [telegram.InlineKeyboardButton("⭐ Premium Al",callback_data="menu_buy")],
-                [telegram.InlineKeyboardButton("🏠 Ana Menü",callback_data="menu_main")],
-            ])
+            kb=with_menu([[telegram.InlineKeyboardButton("⭐ Premium Al",callback_data="menu_buy")]])
         q.edit_message_text(txt,parse_mode='Markdown',reply_markup=kb)
 
     # Paket listesi
     elif data=="menu_buy":
         pkgs=get_active_packages()
         if not pkgs:
-            q.edit_message_text(
-                "⚠️ Şu an aktif paket bulunmuyor.",
-                reply_markup=telegram.InlineKeyboardMarkup([[
-                    telegram.InlineKeyboardButton("🏠 Ana Menü",callback_data="menu_main")
-                ]])
-            )
+            q.edit_message_text("⚠️ Şu an aktif paket bulunmuyor.",reply_markup=with_menu([]))
             return
         txt="🛒 *Premium Paketler*\n\nTelegram Stars ile ödeme yap:\n"
         for pid,name,stars,days in pkgs:
@@ -1210,9 +1205,7 @@ def handle_callback(update,context):
             q.edit_message_text(
                 f"✅ *{name}* için ödeme talebi gönderildi!\n\nTelegram üzerinden Stars ile ödeme yap.",
                 parse_mode='Markdown',
-                reply_markup=telegram.InlineKeyboardMarkup([[
-                    telegram.InlineKeyboardButton("🏠 Ana Menü",callback_data="menu_main")
-                ]])
+                reply_markup=with_menu([])
             )
         except Exception as e:
             q.answer(f"❌ Hata: {e}",show_alert=True)
@@ -1239,10 +1232,7 @@ def handle_callback(update,context):
         import urllib.parse
         share_text=urllib.parse.quote(f"{BOT_NAME}'e katıl, ücretsiz premium kazan!")
         share_url=urllib.parse.quote(ref_link)
-        kb=telegram.InlineKeyboardMarkup([
-            [telegram.InlineKeyboardButton("📤 Linki Paylaş",url=f"https://t.me/share/url?url={share_url}&text={share_text}")],
-            [telegram.InlineKeyboardButton("🏠 Ana Menü",callback_data="menu_main")],
-        ])
+        kb=with_menu([[telegram.InlineKeyboardButton("📤 Linki Paylaş",url=f"https://t.me/share/url?url={share_url}&text={share_text}")]])
         q.edit_message_text(txt,parse_mode='Markdown',reply_markup=kb)
 
     # Destek
@@ -1254,10 +1244,7 @@ def handle_callback(update,context):
             f"📩 Direkt bot'a mesaj at, ekibimiz yanıtlar\n\n"
             f"_Yanıt süresi: 24 saat içinde_"
         )
-        kb=telegram.InlineKeyboardMarkup([
-            [telegram.InlineKeyboardButton("📱 Mini App — Destek",web_app=telegram.WebAppInfo(url=WEBAPP_URL+"?page=destek"))],
-            [telegram.InlineKeyboardButton("🏠 Ana Menü",callback_data="menu_main")],
-        ])
+        kb=with_menu([[telegram.InlineKeyboardButton("📱 Mini App — Destek",web_app=telegram.WebAppInfo(url=WEBAPP_URL+"?page=destek"))]])
         q.edit_message_text(txt,parse_mode='Markdown',reply_markup=kb)
 
 def menu_cmd(update,context):
