@@ -2,8 +2,8 @@ services:
   - type: web
     name: epbot
     runtime: python
-    buildCommand: cd artifacts/elited-vip && pip install -r requirements.txt
-    startCommand: cd artifacts/elited-vip && python main.py
+    buildCommand: pip install -r artifacts/elited-vip/requirements.txt
+    startCommand: python artifacts/elited-vip/main.py
     envVars:
       - key: BOT_TOKEN
         sync: false
