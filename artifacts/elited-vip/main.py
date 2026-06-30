@@ -1506,7 +1506,7 @@ def handle_callback(update, context):
         if nav:
             rows.append(nav)
         safe_edit(q,
-            f"🏷️ *Etiketler* ({total} etiket)\n\nBir etiket seç:",
+            f"🏷️ *Kategoriler* ({total} kategori)\n\nBir kategori seç:",
             parse_mode='Markdown', reply_markup=with_menu(rows)
         )
 
@@ -1520,7 +1520,7 @@ def handle_callback(update, context):
         cur.execute("SELECT id,label,emoji FROM tags WHERE slug=%s", (slug,))
         tag = cur.fetchone()
         if not tag:
-            safe_edit(q, "❌ Etiket bulunamadı.", reply_markup=main_menu_kb(uid))
+            safe_edit(q, "❌ Kategori bulunamadı.", reply_markup=main_menu_kb(uid))
             return
         cur.execute("""
             SELECT v.id, v.title FROM videos v
@@ -1550,9 +1550,9 @@ def handle_callback(update, context):
             nav.append(telegram.InlineKeyboardButton("Sonraki ▶️", callback_data=f"tagvids:{slug}:{page + 1}"))
         if nav:
             rows.append(nav)
-        rows.append([telegram.InlineKeyboardButton("🏷️ Etiketler", callback_data="menu_tags:0")])
+        rows.append([telegram.InlineKeyboardButton("🏷️ Kategoriler", callback_data="menu_tags:0")])
         status = "✅ Premium" if prem else "🔒 Premium gerekli"
-        vids_text = "".join(f"\n{'▶️' if prem else '🔒'} {v[1].split(chr(10))[0].split('#')[0].strip()}" for v in videos) or "\n_Bu etikette video bulunamadı._"
+        vids_text = "".join(f"\n{'▶️' if prem else '🔒'} {v[1].split(chr(10))[0].split('#')[0].strip()}" for v in videos) or "\n_Bu kategoride video bulunamadı._"
         safe_edit(q,
             f"{tag[2] or '🏷️'} *{tag[1]}*\n📊 {total} video | Sayfa {page + 1} | {status}{vids_text}",
             parse_mode='Markdown', reply_markup=with_menu(rows)
