@@ -412,8 +412,8 @@ function goTags(){
 function renderTagsPage(){
     var tags=homeData&&homeData.tags?homeData.tags:[];
     var el=document.getElementById('tags-scroll');
-    document.getElementById('tags-sub').textContent=(tags.length)+' etiket';
-    if(!tags.length){el.innerHTML='<div class="empty-state"><div class="ei">🏷️</div><h3>Kategori Yok</h3><p>Henüz etiket eklenmemiş</p></div>';return;}
+    document.getElementById('tags-sub').textContent=(tags.length)+' kategori';
+    if(!tags.length){el.innerHTML='<div class="empty-state"><div class="ei">🏷️</div><h3>Kategori Yok</h3><p>Henüz kategori eklenmemiş</p></div>';return;}
     var html='<div class="section" style="padding-top:14px"><div class="tag-grid">';
     tags.forEach(function(tag){
         html+='<div class="tag-card" onclick="openTag(\''+esc(tag.slug)+'\',\''+esc(tag.label)+'\',\''+esc(tag.emoji||'🏷️')+'\','+tag.count+')">'
@@ -435,7 +435,7 @@ async function openTag(slug,label,emoji,count){
         var d=await api('/user/videos-by-tag?user_id='+USER_ID+'&tag='+encodeURIComponent(slug));
         var videos=d.videos||[];var isPrem=d.premium;
         document.getElementById('tag-badge').textContent=videos.length+' video';
-        if(!videos.length){document.getElementById('tag-scroll').innerHTML='<div class="empty-state"><div class="ei">🎬</div><h3>Video Yok</h3><p>Bu etikette henüz video yok</p></div>';}
+        if(!videos.length){document.getElementById('tag-scroll').innerHTML='<div class="empty-state"><div class="ei">🎬</div><h3>Video Yok</h3><p>Bu kategorite henüz video yok</p></div>';}
         else{
             var html='';
             if(!isPrem){var defPkg=homeData&&homeData.packages?homeData.packages[1]||homeData.packages[0]:null;html+='<div class="lock-banner"><h4>🔒 Premium Gerekli</h4><p>Bu içeriklere erişmek için premium üyelik gereklidir'+(defPkg?' (⭐ '+defPkg.stars+' Stars)':'')+'.</p><button class="up-btn" onclick="goPremium()">⭐ Premium Ol</button></div>';}
