@@ -407,7 +407,7 @@ def api_user_home():
         tags = get_video_tags_by_id(r[0], cur)
         top_videos.append({'id': r[0], 'title': r[1], 'thumb_file_id': r[2], 'view_count': r[3], 'tags': tags})
 
-    # Tüm etiketler ve video sayıları
+    # Tüm kategoriler ve video sayıları
     cur.execute("""
         SELECT t.id, t.slug, t.label, t.emoji, COUNT(vt.video_id) as cnt
         FROM tags t
@@ -1586,7 +1586,7 @@ def handle_callback(update, context):
                 f"✅ *{title}* gönderildi!",
                 parse_mode='Markdown',
                 reply_markup=with_menu([
-                    [telegram.InlineKeyboardButton("🏷️ Etiketlere Dön", callback_data="menu_tags:0")],
+                    [telegram.InlineKeyboardButton("🏷️ Kategorilere Dön", callback_data="menu_tags:0")],
                 ])
             )
         except Exception as e:
@@ -2106,11 +2106,11 @@ def video_yukle(update, context):
         conn, c = get_db()
         c.execute("SELECT slug, label, emoji FROM tags ORDER BY label")
         tags = c.fetchall()
-        tag_list = "\n".join([f"  {r[2] or '🏷️'} {r[0]} → {r[1]}" for r in tags]) or "  (Etiket yok)"
+        tag_list = "\n".join([f"  {r[2] or '🏷️'} {r[0]} → {r[1]}" for r in tags]) or "  (Kategori yok)"
         return update.message.reply_text(f"❌ Kullanım: /yukle <başlık>\n\nEtiket seçmeden yüklemek için sadece başlık yazın.\nMevcut etiketler:\n{tag_list}")
     title = ' '.join(args)
     context.user_data['yukle'] = {'title': title}
-    update.message.reply_text(f"📤 *{title}* videosunu gönderin.\n\n_Not: Etiket atamak için admin panelini kullanın._", parse_mode='Markdown')
+    update.message.reply_text(f"📤 *{title}* videosunu gönderin.\n\n_Not: Kategori atamak için admin panelini kullanın._", parse_mode='Markdown')
 
 def pre_checkout(update, context):
     query = update.pre_checkout_query
