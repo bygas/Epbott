@@ -190,18 +190,19 @@ for sql in [
         package_name TEXT,
         paid_at TEXT
     )""",
+    """CREATE TABLE IF NOT EXISTS tags (
+        id SERIAL PRIMARY KEY,
+        slug TEXT UNIQUE,
+        label TEXT,
+        emoji TEXT DEFAULT '🏷️'
+    )""",
+    """CREATE TABLE IF NOT EXISTS video_tags (
+        video_id INTEGER,
+        tag_id INTEGER,
+        PRIMARY KEY (video_id, tag_id)
+    )""",
 ]:
     c.execute(sql)
-
-c.execute("SELECT COUNT(*) FROM categories")
-if c.fetchone()[0] == 0:
-    # Emojiler doğrudan Unicode karakterleriyle yazıldı
-    c.executemany("INSERT INTO categories (slug,label,emoji,parent_id) VALUES (%s,%s,%s,%s)", [
-        ('film_dublaj', 'Filmler | Dublajlı', '🎥', None),
-        ('film_altyazi', 'Filmler | Altyazılı', '📝', None),
-        ('dizi_dublaj', 'Diziler | Dublajlı', '📺', None),
-        ('dizi_altyazi', 'Diziler | Altyazılı', '📺', None),
-    ])
 
 c.execute("SELECT COUNT(*) FROM packages")
 if c.fetchone()[0] == 0:
@@ -269,6 +270,21 @@ def get_categories(parent_id=None):
 def get_video_counts():
     c.execute("SELECT category,COUNT(*) FROM videos GROUP BY category")
     return {(k if k is not None else ''): v for k, v in c.fetchall()}
+
+def get_all_tags():
+    c.execute("SELECT id,slug,label,emoji FROM tags ORDER BY label")
+    return c.fetchall()
+
+def get_video_tags_by_id(video_id, cur=None):
+    _cur = cur or c
+    _cur.execute("""
+        SELECT t.slug, t.label, t.emoji
+        FROM tags t
+        JOIN video_tags vt ON vt.tag_id = t.id
+        WHERE vt.video_id = %s
+        ORDER BY t.label
+    """, (video_id,))
+    return [{'slug': r[0], 'label': r[1], 'emoji': r[2]} for r in _cur.fetchall()]
 
 def is_new_user(user_id):
     c.execute("SELECT 1 FROM new_users WHERE user_id=%s", (user_id,))
@@ -362,48 +378,82 @@ def api_user_home():
         return jsonify({'error': 'invalid'}), 400
     premium = is_premium(user_id)
     rem = days_remaining(user_id) if premium else 0
-    counts = get_video_counts()
     cur.execute("SELECT COUNT(*) FROM videos")
     tv = cur.fetchone()[0]
     cur.execute("SELECT COUNT(*) FROM users WHERE premium_date > %s", (datetime.datetime.now().strftime('%Y-%m-%d'),))
     tm = cur.fetchone()[0]
-    cats = []
-    for cid, slug, label, emoji, parent_id in get_all_categories():
-        children = get_categories(parent_id=cid)
-        sub_count = sum(counts.get(ch[1], 0) for ch in children)
-        total_in = counts.get(slug, 0) + sub_count
-        cats.append({'id': cid, 'slug': slug, 'label': label, 'emoji': emoji, 'parent_id': parent_id, 'count': total_in, 'has_children': len(children) > 0})
     pkgs = get_active_packages()
-    cur.execute("SELECT id,title,category,thumb_file_id FROM videos ORDER BY id DESC LIMIT 500")
-    all_vids = [{'id': r[0], 'title': r[1], 'category': r[2], 'thumb_file_id': r[3]} for r in cur.fetchall()]
-    return jsonify({'premium': premium, 'days_remaining': rem, 'total_videos': tv, 'total_members': tm, 'categories': cats,
-                    'packages': [{'id': p[0], 'name': p[1], 'stars': p[2], 'days': p[3]} for p in pkgs],
-                    'new_user_gift': is_new_user(user_id) if user_id else False, 'free_days': FREE_DAYS,
-                    'all_videos': all_vids})
 
-@app.route('/api/user/videos')
-def api_user_videos():
+    # En son eklenen 10 video
+    cur.execute("SELECT id,title,thumb_file_id FROM videos ORDER BY id DESC LIMIT 10")
+    recent_rows = cur.fetchall()
+    recent_videos = []
+    for r in recent_rows:
+        tags = get_video_tags_by_id(r[0], cur)
+        recent_videos.append({'id': r[0], 'title': r[1], 'thumb_file_id': r[2], 'tags': tags})
+
+    # En çok izlenen 10 video
+    cur.execute("""
+        SELECT v.id, v.title, v.thumb_file_id, COUNT(vv.id) as vc
+        FROM videos v
+        LEFT JOIN video_views vv ON vv.video_id = v.id
+        GROUP BY v.id
+        ORDER BY vc DESC, v.id DESC
+        LIMIT 10
+    """)
+    top_rows = cur.fetchall()
+    top_videos = []
+    for r in top_rows:
+        tags = get_video_tags_by_id(r[0], cur)
+        top_videos.append({'id': r[0], 'title': r[1], 'thumb_file_id': r[2], 'view_count': r[3], 'tags': tags})
+
+    # Tüm etiketler ve video sayıları
+    cur.execute("""
+        SELECT t.id, t.slug, t.label, t.emoji, COUNT(vt.video_id) as cnt
+        FROM tags t
+        LEFT JOIN video_tags vt ON vt.tag_id = t.id
+        GROUP BY t.id
+        ORDER BY t.label
+    """)
+    tags = [{'id': r[0], 'slug': r[1], 'label': r[2], 'emoji': r[3], 'count': r[4]} for r in cur.fetchall()]
+
+    # Arama için tüm videolar
+    cur.execute("SELECT id,title,thumb_file_id FROM videos ORDER BY id DESC LIMIT 500")
+    all_vids = [{'id': r[0], 'title': r[1], 'thumb_file_id': r[2]} for r in cur.fetchall()]
+
+    return jsonify({
+        'premium': premium, 'days_remaining': rem, 'total_videos': tv, 'total_members': tm,
+        'recent_videos': recent_videos, 'top_videos': top_videos, 'tags': tags,
+        'packages': [{'id': p[0], 'name': p[1], 'stars': p[2], 'days': p[3]} for p in pkgs],
+        'new_user_gift': is_new_user(user_id) if user_id else False, 'free_days': FREE_DAYS,
+        'all_videos': all_vids
+    })
+
+@app.route('/api/user/videos-by-tag')
+def api_user_videos_by_tag():
     db, cur = get_db()
     try:
         user_id = int(request.args.get('user_id', 0))
-        slug = request.args.get('category', '')
+        slug = request.args.get('tag', '')
     except:
         return jsonify({'error': 'invalid'}), 400
     if not slug:
-        return jsonify({'error': 'category required'}), 400
+        return jsonify({'error': 'tag required'}), 400
     premium = is_premium(user_id)
-    cur.execute("SELECT id,slug,label,emoji,parent_id FROM categories WHERE slug=%s", (slug,))
-    cat = cur.fetchone()
-    if not cat:
+    cur.execute("SELECT id,slug,label,emoji FROM tags WHERE slug=%s", (slug,))
+    tag = cur.fetchone()
+    if not tag:
         return jsonify({'error': 'not found'}), 404
-    children = get_categories(parent_id=cat[0])
-    if children:
-        counts = get_video_counts()
-        subcats = [{'id': ch[0], 'slug': ch[1], 'label': ch[2], 'emoji': ch[3], 'count': counts.get(ch[1], 0)} for ch in children]
-        return jsonify({'type': 'subcategories', 'label': cat[2], 'emoji': cat[3], 'subcategories': subcats})
-    cur.execute("SELECT id,title,thumb_file_id FROM videos WHERE category=%s", (slug,))
+    cur.execute("""
+        SELECT v.id, v.title, v.thumb_file_id
+        FROM videos v
+        JOIN video_tags vt ON vt.video_id = v.id
+        JOIN tags t ON t.id = vt.tag_id
+        WHERE t.slug = %s
+        ORDER BY v.id DESC
+    """, (slug,))
     videos = [{'id': r[0], 'title': r[1], 'locked': not premium, 'thumb': r[2]} for r in cur.fetchall()]
-    return jsonify({'type': 'videos', 'label': cat[2], 'emoji': cat[3], 'videos': videos, 'premium': premium})
+    return jsonify({'label': tag[2], 'emoji': tag[3], 'videos': videos, 'premium': premium})
 
 @app.route('/api/user/send-video/<int:video_id>', methods=['POST'])
 def api_send_video(video_id):
@@ -423,7 +473,7 @@ def api_send_video(video_id):
     file_id, title, cat, channel_id, message_id = row
     if not bot_instance:
         return jsonify({'ok': False, 'error': 'Bot hazir degil'}), 503
-    log_view(video_id, user_id, cat)
+    log_view(video_id, user_id, cat or 'tag')
     cur.execute("SELECT file_id,file_type FROM video_bundles WHERE video_id=%s ORDER BY CASE WHEN file_type='photo' THEN 0 ELSE 1 END,sort_order", (video_id,))
     bundle_items = cur.fetchall()
     for b_fid, b_type in bundle_items:
@@ -597,10 +647,10 @@ def api_stats():
     tv = cur.fetchone()[0]
     cur.execute("SELECT COUNT(*) FROM pending_payments")
     pp = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM categories")
-    tc = cur.fetchone()[0]
+    cur.execute("SELECT COUNT(*) FROM tags")
+    tt = cur.fetchone()[0]
     stats = get_view_stats()
-    return jsonify({'total_users': tu, 'premium_users': pu, 'total_videos': tv, 'pending_payments': pp, 'total_cats': tc, 'views': stats})
+    return jsonify({'total_users': tu, 'premium_users': pu, 'total_videos': tv, 'pending_payments': pp, 'total_tags': tt, 'views': stats})
 
 @app.route('/api/videos/<int:video_id>/bundle')
 def api_get_bundle(video_id):
@@ -716,8 +766,12 @@ def api_revoke_premium(user_id):
 def api_videos():
     db, cur = get_db()
     cur.execute("SELECT id,category,title,thumb_file_id FROM videos ORDER BY id DESC")
-    counts = get_video_counts()
-    return jsonify({'videos': [{'id': r[0], 'category': r[1], 'title': r[2], 'thumb': r[3]} for r in cur.fetchall()], 'counts': counts})
+    rows = cur.fetchall()
+    videos = []
+    for r in rows:
+        tags = get_video_tags_by_id(r[0], cur)
+        videos.append({'id': r[0], 'category': r[1], 'title': r[2], 'thumb': r[3], 'tags': tags})
+    return jsonify({'videos': videos})
 
 @app.route('/api/videos/<int:video_id>', methods=['DELETE'])
 def api_delete_video(video_id):
@@ -729,19 +783,24 @@ def api_delete_video(video_id):
 @app.route('/api/videos/prepare', methods=['POST'])
 def api_prepare_video():
     data = request.get_json()
-    cat = data.get('category', '').strip()
+    tag_ids = data.get('tag_ids', [])  # list of tag IDs
     title = data.get('title', '').strip()
-    if not cat or not title:
-        return jsonify({'success': False, 'error': 'Eksik bilgi'})
+    if not title:
+        return jsonify({'success': False, 'error': 'Başlık gerekli'})
     db, cur = get_db()
-    cur.execute("SELECT 1 FROM categories WHERE slug=%s", (cat,))
-    if not cur.fetchone():
-        return jsonify({'success': False, 'error': 'Geçersiz kategori'})
-    cur.execute("INSERT INTO pending_video_uploads (admin_id,category,title,created_at) VALUES (%s,%s,%s,%s) ON CONFLICT (admin_id) DO UPDATE SET category=EXCLUDED.category,title=EXCLUDED.title,created_at=EXCLUDED.created_at", (ADMIN_ID, cat, title, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+    # tag_ids'yi virgülle birleştirip category alanında sakla
+    tag_ids_str = ','.join(str(t) for t in tag_ids if str(t).isdigit())
+    cur.execute("INSERT INTO pending_video_uploads (admin_id,category,title,created_at) VALUES (%s,%s,%s,%s) ON CONFLICT (admin_id) DO UPDATE SET category=EXCLUDED.category,title=EXCLUDED.title,created_at=EXCLUDED.created_at",
+                (ADMIN_ID, tag_ids_str, title, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
     db.commit()
+    tag_names = []
+    if tag_ids:
+        cur.execute("SELECT label FROM tags WHERE id = ANY(%s)", (list(map(int, [t for t in tag_ids if str(t).isdigit()])),))
+        tag_names = [r[0] for r in cur.fetchall()]
     if bot_instance:
         try:
-            bot_instance.send_message(ADMIN_ID, f"📤 *Video Yükleme Hazır!*\n\n📂 `{cat}`\n🎬 *{title}*\n\nŞimdi videoyu gönderin 👇", parse_mode='Markdown')
+            tags_line = ', '.join(tag_names) if tag_names else 'Etiket yok'
+            bot_instance.send_message(ADMIN_ID, f"📤 *Video Yükleme Hazır!*\n\n🏷️ `{tags_line}`\n🎬 *{title}*\n\nŞimdi videoyu gönderin 👇", parse_mode='Markdown')
         except:
             pass
     return jsonify({'success': True})
@@ -973,6 +1032,88 @@ def api_clean_expired():
     threading.Thread(target=cleanup_all, daemon=True).start()
     return jsonify({'success': True, 'cleaned': cnt})
 
+@app.route('/api/tags')
+def api_tags():
+    db, cur = get_db()
+    cur.execute("""
+        SELECT t.id, t.slug, t.label, t.emoji, COUNT(vt.video_id) as cnt
+        FROM tags t
+        LEFT JOIN video_tags vt ON vt.tag_id = t.id
+        GROUP BY t.id
+        ORDER BY t.label
+    """)
+    return jsonify({'tags': [{'id': r[0], 'slug': r[1], 'label': r[2], 'emoji': r[3], 'count': r[4]} for r in cur.fetchall()]})
+
+@app.route('/api/tags', methods=['POST'])
+def api_add_tag():
+    data = request.get_json()
+    slug = data.get('slug', '').strip().replace(' ', '_').lower()
+    label = data.get('label', '').strip()
+    emoji = data.get('emoji', '🏷️').strip()
+    if not slug or not label:
+        return jsonify({'success': False, 'error': 'slug ve label gerekli'})
+    db, cur = get_db()
+    try:
+        cur.execute("INSERT INTO tags (slug,label,emoji) VALUES (%s,%s,%s)", (slug, label, emoji))
+        db.commit()
+        return jsonify({'success': True})
+    except psycopg2.IntegrityError:
+        db.rollback()
+        return jsonify({'success': False, 'error': 'Bu slug zaten mevcut'})
+
+@app.route('/api/tags/<int:tag_id>', methods=['PUT'])
+def api_update_tag(tag_id):
+    data = request.get_json()
+    label = data.get('label', '').strip()
+    emoji = data.get('emoji', '').strip()
+    if not label:
+        return jsonify({'success': False, 'error': 'label gerekli'})
+    db, cur = get_db()
+    cur.execute("UPDATE tags SET label=%s,emoji=%s WHERE id=%s", (label, emoji, tag_id))
+    db.commit()
+    return jsonify({'success': True})
+
+@app.route('/api/tags/<int:tag_id>', methods=['DELETE'])
+def api_delete_tag(tag_id):
+    db, cur = get_db()
+    cur.execute("DELETE FROM video_tags WHERE tag_id=%s", (tag_id,))
+    cur.execute("DELETE FROM tags WHERE id=%s", (tag_id,))
+    db.commit()
+    return jsonify({'success': True})
+
+@app.route('/api/videos/<int:video_id>/set-tags', methods=['POST'])
+def api_set_video_tags(video_id):
+    data = request.get_json()
+    tag_ids = data.get('tag_ids', [])
+    db, cur = get_db()
+    cur.execute("DELETE FROM video_tags WHERE video_id=%s", (video_id,))
+    for tid in tag_ids:
+        try:
+            cur.execute("INSERT INTO video_tags (video_id,tag_id) VALUES (%s,%s) ON CONFLICT DO NOTHING", (video_id, int(tid)))
+        except Exception:
+            pass
+    db.commit()
+    # Bildirim gönder
+    cur.execute("SELECT title FROM videos WHERE id=%s", (video_id,))
+    vrow = cur.fetchone()
+    if vrow and tag_ids and bot_instance:
+        cur.execute("SELECT label FROM tags WHERE id = ANY(%s)", ([int(t) for t in tag_ids],))
+        tag_names = ', '.join(r[0] for r in cur.fetchall())
+        cur.execute("SELECT user_id FROM users")
+        all_users = [r[0] for r in cur.fetchall()]
+        kb = [[telegram.InlineKeyboardButton("🎬 İzle", web_app=telegram.WebAppInfo(url=WEBAPP_URL))]]
+        markup = telegram.InlineKeyboardMarkup(kb)
+        msg = f"🆕 Yeni Video!\n\n🎬 *{vrow[0]}*\n🏷️ {tag_names}\n\nHemen izlemek için aşağıdan açın 👇"
+        import threading
+        def broadcast():
+            for uid in all_users:
+                try:
+                    bot_instance.send_message(uid, msg, parse_mode='Markdown', reply_markup=markup)
+                except:
+                    pass
+        threading.Thread(target=broadcast, daemon=True).start()
+    return jsonify({'success': True})
+
 @app.route('/api/categories')
 def api_categories():
     db, cur = get_db()
@@ -1085,51 +1226,18 @@ def api_channel():
     db.commit()
     return jsonify({'success': True})
 
-@app.route('/api/videos/uncategorized')
-def api_uncategorized_videos():
+@app.route('/api/videos/untagged')
+def api_untagged_videos():
     db, cur = get_db()
-    cur.execute("SELECT id,file_id,title,channel_id,message_id,thumb_file_id FROM videos WHERE category IS NULL ORDER BY id DESC")
+    cur.execute("""
+        SELECT v.id, v.file_id, v.title, v.channel_id, v.message_id, v.thumb_file_id
+        FROM videos v
+        LEFT JOIN video_tags vt ON vt.video_id = v.id
+        WHERE vt.video_id IS NULL
+        ORDER BY v.id DESC
+    """)
     rows = cur.fetchall()
     return jsonify({'videos': [{'id': r[0], 'file_id': r[1], 'title': r[2] or 'Video #' + str(r[0]), 'channel_id': r[3], 'message_id': r[4], 'thumb': r[5]} for r in rows]})
-
-@app.route('/api/videos/<int:video_id>/categorize', methods=['POST'])
-def api_categorize_video(video_id):
-    db, cur = get_db()
-    data = request.get_json()
-    slug = data.get('category', '').strip()
-    if not slug:
-        return jsonify({'success': False, 'error': 'Kategori gerekli'})
-    cur.execute("SELECT 1 FROM categories WHERE slug=%s", (slug,))
-    if not cur.fetchone():
-        return jsonify({'success': False, 'error': 'Geçersiz kategori'})
-    cur.execute("UPDATE videos SET category=%s WHERE id=%s", (slug, video_id))
-    db.commit()
-    cur.execute("SELECT title FROM videos WHERE id=%s", (video_id,))
-    vrow = cur.fetchone()
-    cur.execute("SELECT label,emoji,parent_id FROM categories WHERE slug=%s", (slug,))
-    crow = cur.fetchone()
-    if vrow and crow and bot_instance:
-        parent_label = None
-        if crow[2]:
-            cur.execute("SELECT label,emoji FROM categories WHERE id=%s", (crow[2],))
-            prow = cur.fetchone()
-            if prow:
-                parent_label = prow[1] + ' ' + prow[0]
-        cat_line = (parent_label + ' › ' if parent_label else '') + crow[1] + ' ' + crow[0]
-        cur.execute("SELECT user_id FROM users")
-        all_users = [r[0] for r in cur.fetchall()]
-        kb = [[telegram.InlineKeyboardButton(f"🎬 İzle", web_app=telegram.WebAppInfo(url=WEBAPP_URL))]]
-        markup = telegram.InlineKeyboardMarkup(kb)
-        msg = f"🆕 Yeni Video!\n\n🎬 *{vrow[0]}*\n📂 {cat_line}\n\nHemen izlemek için aşağıdan açın 👇"
-        import threading
-        def broadcast():
-            for uid in all_users:
-                try:
-                    bot_instance.send_message(uid, msg, parse_mode='Markdown', reply_markup=markup)
-                except:
-                    pass
-        threading.Thread(target=broadcast, daemon=True).start()
-    return jsonify({'success': True})
 
 @app.route('/api/videos/<int:video_id>/title', methods=['POST'])
 def api_set_video_title(video_id):
@@ -1227,7 +1335,7 @@ def main_menu_kb(uid):
     prem = is_premium(uid)
     rows = [
         [
-            telegram.InlineKeyboardButton("📁 Kategoriler", callback_data="menu_cats:0"),
+            telegram.InlineKeyboardButton("🏷️ Etiketler", callback_data="menu_tags:0"),
             telegram.InlineKeyboardButton("⭐ Durumum", callback_data="menu_prem"),
         ],
         [
@@ -1272,9 +1380,9 @@ def cats_kb(page=0, per_page=8):
         rows.append(row)
     nav = []
     if page > 0:
-        nav.append(telegram.InlineKeyboardButton("◀️ Önceki", callback_data=f"menu_cats:{page - 1}"))
+        nav.append(telegram.InlineKeyboardButton("◀️ Önceki", callback_data=f"menu_tags:{page - 1}"))
     if end_i < total:
-        nav.append(telegram.InlineKeyboardButton("Sonraki ▶️", callback_data=f"menu_cats:{page + 1}"))
+        nav.append(telegram.InlineKeyboardButton("Sonraki ▶️", callback_data=f"menu_tags:{page + 1}"))
     if nav:
         rows.append(nav)
     return with_menu(rows)
@@ -1302,7 +1410,7 @@ def subcats_kb(root_slug):
             f"{emoji or '🎬'} {label} ({cnt} video)",
             callback_data=f"subcat:{slug}:0"
         )])
-    rows.append([telegram.InlineKeyboardButton("📁 Kategoriler", callback_data="menu_cats:0")])
+    rows.append([telegram.InlineKeyboardButton("🏷️ Etiketler", callback_data="menu_tags:0")])
     return with_menu(rows), subcats
 
 def _videos_in_cat(slug, page=0, per_page=6):
@@ -1331,7 +1439,7 @@ def videos_kb(slug, page=0, uid=None, per_page=6):
         nav.append(telegram.InlineKeyboardButton("Sonraki ▶️", callback_data=f"subcat:{slug}:{page + 1}"))
     if nav:
         rows.append(nav)
-    rows.append([telegram.InlineKeyboardButton("📁 Kategoriler", callback_data="menu_cats:0")])
+    rows.append([telegram.InlineKeyboardButton("🏷️ Etiketler", callback_data="menu_tags:0")])
     return with_menu(rows), videos, total
 
 def packages_kb():
@@ -1366,74 +1474,89 @@ def handle_callback(update, context):
         )
         return
 
-    elif data.startswith("menu_cats:"):
+    elif data.startswith("menu_tags:"):
         page = int(data.split(":")[1])
-        cats = get_categories()
-        safe_edit(q, 
-            f"📁 *Kategoriler* ({len(cats)} kategori)\n\nBir kategori seç:",
-            parse_mode='Markdown',
-            reply_markup=cats_kb(page)
+        db, cur = get_db()
+        cur.execute("""
+            SELECT t.id, t.slug, t.label, t.emoji, COUNT(vt.video_id) as cnt
+            FROM tags t LEFT JOIN video_tags vt ON vt.tag_id=t.id
+            GROUP BY t.id ORDER BY t.label
+        """)
+        tags = cur.fetchall()
+        if not tags:
+            safe_edit(q, "🏷️ *Etiketler*\n\nHenüz etiket eklenmemiş.", parse_mode='Markdown', reply_markup=with_menu([]))
+            return
+        per_page = 8
+        total = len(tags)
+        chunk = tags[page * per_page:(page + 1) * per_page]
+        rows = []
+        for i in range(0, len(chunk), 2):
+            row_btns = []
+            for tag in chunk[i:i + 2]:
+                row_btns.append(telegram.InlineKeyboardButton(
+                    f"{tag[3] or '🏷️'} {tag[2]} ({tag[4]})",
+                    callback_data=f"tagvids:{tag[1]}:0"
+                ))
+            rows.append(row_btns)
+        nav = []
+        if page > 0:
+            nav.append(telegram.InlineKeyboardButton("◀️ Önceki", callback_data=f"menu_tags:{page - 1}"))
+        if (page + 1) * per_page < total:
+            nav.append(telegram.InlineKeyboardButton("Sonraki ▶️", callback_data=f"menu_tags:{page + 1}"))
+        if nav:
+            rows.append(nav)
+        safe_edit(q,
+            f"🏷️ *Etiketler* ({total} etiket)\n\nBir etiket seç:",
+            parse_mode='Markdown', reply_markup=with_menu(rows)
         )
 
-    elif data.startswith("rootcat:"):
-        root_slug = data.split(":")[1]
-        db, cur = get_db()
-        cur.execute("SELECT label,emoji FROM categories WHERE slug=%s", (root_slug,))
-        row = cur.fetchone()
-        label = row[0] if row else root_slug
-        emoji = (row[1] or '📁') if row else '📁'
-        kb, subcats = subcats_kb(root_slug)
-        if not subcats:
-            kb2, videos, total = videos_kb(root_slug, 0, uid)
-            prem = is_premium(uid)
-            status = "✅ Premium" if prem else "🔒 Premium gerekli"
-            vids_text = "".join(f"\n{'▶️' if prem else '🔒'} {v[1].split(chr(10))[0].split('#')[0].strip()}" for v in videos) or "\n_Bu kategoride video bulunamadı._"
-            safe_edit(q, 
-                f"{emoji} *{label}*\n📊 {total} video | {status}{vids_text}",
-                parse_mode='Markdown', reply_markup=kb2
-            )
-        else:
-            safe_edit(q, 
-                f"{emoji} *{label}*\n\nAlt kategori seç:",
-                parse_mode='Markdown', reply_markup=kb
-            )
-
-    elif data.startswith("subcat:"):
+    elif data.startswith("tagvids:"):
         parts = data.split(":")
         slug = parts[1]
         page = int(parts[2]) if len(parts) > 2 else 0
+        per_page = 6
         prem = is_premium(uid)
-        kb, videos, total = videos_kb(slug, page, uid)
         db, cur = get_db()
-        cur.execute("SELECT label,emoji,parent_id FROM categories WHERE slug=%s", (slug,))
-        row = cur.fetchone()
-        label = row[0] if row else slug
-        emoji = (row[1] or '🎬') if row else '🎬'
-        parent_id = row[2] if row else None
-        root_slug = slug
-        if parent_id:
-            cur.execute("SELECT slug FROM categories WHERE id=%s", (parent_id,))
-            pr = cur.fetchone()
-            if pr:
-                root_slug = pr[0]
-        status = "✅ Premium" if prem else "🔒 Premium gerekli"
-        vids_text = ""
+        cur.execute("SELECT id,label,emoji FROM tags WHERE slug=%s", (slug,))
+        tag = cur.fetchone()
+        if not tag:
+            safe_edit(q, "❌ Etiket bulunamadı.", reply_markup=main_menu_kb(uid))
+            return
+        cur.execute("""
+            SELECT v.id, v.title FROM videos v
+            JOIN video_tags vt ON vt.video_id=v.id
+            JOIN tags t ON t.id=vt.tag_id
+            WHERE t.slug=%s ORDER BY v.id DESC LIMIT %s OFFSET %s
+        """, (slug, per_page, page * per_page))
+        videos = cur.fetchall()
+        cur.execute("""
+            SELECT COUNT(*) FROM videos v
+            JOIN video_tags vt ON vt.video_id=v.id
+            JOIN tags t ON t.id=vt.tag_id WHERE t.slug=%s
+        """, (slug,))
+        total = cur.fetchone()[0]
+        rows = []
         for vid_id, title in videos:
             clean = title.split('\n')[0].split('#')[0].strip()
-            ic = '▶️' if prem else '🔒'
-            vids_text += f"\n{ic} {clean}"
-        if not videos:
-            vids_text = "\n_Bu kategoride video bulunamadı._"
-        back_row = [telegram.InlineKeyboardButton(f"⬅️ Geri", callback_data=f"rootcat:{root_slug}")]
-        if kb.inline_keyboard:
-            last = kb.inline_keyboard[-1]
-            kb.inline_keyboard.insert(-1, [back_row[0]])
-        txt = (
-            f"{emoji} *{label}*\n"
-            f"📊 {total} video | Sayfa {page + 1} | {status}"
-            f"{vids_text}"
+            short = clean[:30] + "…" if len(clean) > 32 else clean
+            if prem:
+                rows.append([telegram.InlineKeyboardButton(f"▶️ {short}", callback_data=f"sendvid:{vid_id}")])
+            else:
+                rows.append([telegram.InlineKeyboardButton(f"🔒 {short}", callback_data="menu_buy")])
+        nav = []
+        if page > 0:
+            nav.append(telegram.InlineKeyboardButton("◀️ Önceki", callback_data=f"tagvids:{slug}:{page - 1}"))
+        if (page + 1) * per_page < total:
+            nav.append(telegram.InlineKeyboardButton("Sonraki ▶️", callback_data=f"tagvids:{slug}:{page + 1}"))
+        if nav:
+            rows.append(nav)
+        rows.append([telegram.InlineKeyboardButton("🏷️ Etiketler", callback_data="menu_tags:0")])
+        status = "✅ Premium" if prem else "🔒 Premium gerekli"
+        vids_text = "".join(f"\n{'▶️' if prem else '🔒'} {v[1].split(chr(10))[0].split('#')[0].strip()}" for v in videos) or "\n_Bu etikette video bulunamadı._"
+        safe_edit(q,
+            f"{tag[2] or '🏷️'} *{tag[1]}*\n📊 {total} video | Sayfa {page + 1} | {status}{vids_text}",
+            parse_mode='Markdown', reply_markup=with_menu(rows)
         )
-        safe_edit(q, txt, parse_mode='Markdown', reply_markup=kb)
 
     elif data.startswith("sendvid:"):
         vid_id = int(data.split(":")[1])
@@ -1463,7 +1586,7 @@ def handle_callback(update, context):
                 f"✅ *{title}* gönderildi!",
                 parse_mode='Markdown',
                 reply_markup=with_menu([
-                    [telegram.InlineKeyboardButton("📁 Kategorilere Dön", callback_data="menu_cats:0")],
+                    [telegram.InlineKeyboardButton("🏷️ Etiketlere Dön", callback_data="menu_tags:0")],
                 ])
             )
         except Exception as e:
@@ -1845,29 +1968,43 @@ def handle_video(update, context):
     c.execute("SELECT category,title FROM pending_video_uploads WHERE admin_id=%s", (ADMIN_ID,))
     row = c.fetchone()
     if row:
-        cat, title = row
+        tag_ids_str, title = row
         fid = update.message.video.file_id
+        tid_thumb = update.message.video.thumb.file_id if update.message.video and update.message.video.thumb else None
         ch = get_channel_id()
+        new_vid_id = None
         if ch:
             try:
                 fwd = bot_instance.send_video(chat_id=ch, video=fid, caption=title)
-                tid = fwd.video.thumb.file_id if fwd.video and fwd.video.thumb else None
-                c.execute("INSERT INTO videos (category,file_id,title,channel_id,message_id,thumb_file_id) VALUES (%s,%s,%s,%s,%s,%s)", (cat, fid, title, str(ch), fwd.message_id, tid))
+                tid_thumb = fwd.video.thumb.file_id if fwd.video and fwd.video.thumb else tid_thumb
+                c.execute("INSERT INTO videos (file_id,title,channel_id,message_id,thumb_file_id) VALUES (%s,%s,%s,%s,%s) RETURNING id",
+                          (fid, title, str(ch), fwd.message_id, tid_thumb))
+                new_vid_id = c.fetchone()[0]
             except Exception as e:
-                c.execute("INSERT INTO videos (category,file_id,title,thumb_file_id) VALUES (%s,%s,%s,%s)", (cat, fid, title, tid))
+                c.execute("INSERT INTO videos (file_id,title,thumb_file_id) VALUES (%s,%s,%s) RETURNING id", (fid, title, tid_thumb))
+                new_vid_id = c.fetchone()[0]
         else:
-            c.execute("INSERT INTO videos (category,file_id,title,thumb_file_id) VALUES (%s,%s,%s,%s)", (cat, fid, title, tid))
+            c.execute("INSERT INTO videos (file_id,title,thumb_file_id) VALUES (%s,%s,%s) RETURNING id", (fid, title, tid_thumb))
+            new_vid_id = c.fetchone()[0]
+        # Etiketleri ata
+        if new_vid_id and tag_ids_str:
+            for tid_str in tag_ids_str.split(','):
+                try:
+                    c.execute("INSERT INTO video_tags (video_id,tag_id) VALUES (%s,%s) ON CONFLICT DO NOTHING", (new_vid_id, int(tid_str)))
+                except Exception:
+                    pass
         c.execute("DELETE FROM pending_video_uploads WHERE admin_id=%s", (ADMIN_ID,))
         conn.commit()
-        update.message.reply_text(f"✅ Video eklendi!\n📂 {cat}\n🎬 {title}")
+        tag_line = tag_ids_str if tag_ids_str else 'Etiketsiz'
+        update.message.reply_text(f"✅ Video eklendi!\n🏷️ Etiketler: {tag_line}\n🎬 {title}")
     elif 'yukle' in context.user_data:
         data = context.user_data['yukle']
         fid = update.message.video.file_id
-        tid = update.message.video.thumb.file_id if update.message.video and update.message.video.thumb else None
-        c.execute("INSERT INTO videos (category,file_id,title,thumb_file_id) VALUES (%s,%s,%s,%s)", (data['category'], fid, data['title'], tid))
+        tid_thumb = update.message.video.thumb.file_id if update.message.video and update.message.video.thumb else None
+        c.execute("INSERT INTO videos (file_id,title,thumb_file_id) VALUES (%s,%s,%s)", (fid, data['title'], tid_thumb))
         conn.commit()
         del context.user_data['yukle']
-        update.message.reply_text(f"✅ Video eklendi!\n📂 {data['category']}\n🎬 {data['title']}")
+        update.message.reply_text(f"✅ Video eklendi!\n🎬 {data['title']}")
     else:
         ch = get_channel_id()
         if ch:
@@ -1965,15 +2102,15 @@ def video_yukle(update, context):
     if update.effective_user.id != ADMIN_ID:
         return update.message.reply_text("❌ Sadece admin.")
     args = context.args
-    if len(args) < 2:
-        c.execute("SELECT slug FROM categories ORDER BY id")
-        return update.message.reply_text("❌ Kullanım: /yukle <slug> <Başlık>\n\n" + "\n".join([r[0] for r in c.fetchall()]))
-    cat, title = args[0], ' '.join(args[1:])
-    c.execute("SELECT 1 FROM categories WHERE slug=%s", (cat,))
-    if not c.fetchone():
-        return update.message.reply_text(f"❌ '{cat}' bulunamadı.")
-    context.user_data['yukle'] = {'category': cat, 'title': title}
-    update.message.reply_text(f"📤 *{title}* videosunu gönderin.", parse_mode='Markdown')
+    if not args:
+        conn, c = get_db()
+        c.execute("SELECT slug, label, emoji FROM tags ORDER BY label")
+        tags = c.fetchall()
+        tag_list = "\n".join([f"  {r[2] or '🏷️'} {r[0]} → {r[1]}" for r in tags]) or "  (Etiket yok)"
+        return update.message.reply_text(f"❌ Kullanım: /yukle <başlık>\n\nEtiket seçmeden yüklemek için sadece başlık yazın.\nMevcut etiketler:\n{tag_list}")
+    title = ' '.join(args)
+    context.user_data['yukle'] = {'title': title}
+    update.message.reply_text(f"📤 *{title}* videosunu gönderin.\n\n_Not: Etiket atamak için admin panelini kullanın._", parse_mode='Markdown')
 
 def pre_checkout(update, context):
     query = update.pre_checkout_query

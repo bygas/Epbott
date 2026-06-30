@@ -49,17 +49,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 select.inp option{background:#161630;color:#fff;}
 .irow{display:flex;gap:5px;margin-bottom:7px;}
 .irow .inp{margin-bottom:0;}
-.cat-item{background:var(--tg-theme-secondary-bg-color,#161630);border-radius:11px;margin-bottom:6px;border:1px solid rgba(255,255,255,.06);overflow:hidden;}
-.cat-item.sub{margin-left:18px;border-left:2px solid #7c3aed;border-radius:0 11px 11px 0;}
-.cat-head{display:flex;align-items:center;padding:10px 11px;gap:9px;}
-.cat-emoji{font-size:20px;width:28px;text-align:center;}
-.cat-info{flex:1;}
-.cat-info .cn{font-size:13px;font-weight:700;}
-.cat-info .cs{font-size:9px;color:rgba(255,255,255,.3);font-family:monospace;}
-.cat-cnt{font-size:11px;font-weight:800;color:#7c3aed;background:rgba(124,58,237,.12);padding:3px 9px;border-radius:20px;white-space:nowrap;}
-.cat-acts{display:flex;gap:5px;padding:0 11px 10px;}
-.cat-edit-form{padding:0 11px 11px;display:none;}
-.cat-edit-form.open{display:block;}
+.tag-item{background:var(--tg-theme-secondary-bg-color,#161630);border-radius:11px;margin-bottom:6px;border:1px solid rgba(255,255,255,.06);overflow:hidden;}
+.tag-head{display:flex;align-items:center;padding:10px 11px;gap:9px;}
+.tag-emoji{font-size:20px;width:28px;text-align:center;}
+.tag-info{flex:1;}
+.tag-info .tn{font-size:13px;font-weight:700;}
+.tag-info .ts{font-size:9px;color:rgba(255,255,255,.3);font-family:monospace;}
+.tag-cnt{font-size:11px;font-weight:800;color:#7c3aed;background:rgba(124,58,237,.12);padding:3px 9px;border-radius:20px;white-space:nowrap;}
+.tag-acts{display:flex;gap:5px;padding:0 11px 10px;}
+.tag-edit-form{padding:0 11px 11px;display:none;}
+.tag-edit-form.open{display:block;}
 .pkg-card{background:var(--tg-theme-secondary-bg-color,#161630);border-radius:12px;margin-bottom:8px;border:1px solid rgba(255,255,255,.06);overflow:hidden;}
 .pkg-head{display:flex;align-items:center;padding:12px;gap:10px;}
 .pkg-stars{font-size:22px;font-weight:900;color:#f59e0b;}
@@ -69,12 +68,7 @@ select.inp option{background:#161630;color:#fff;}
 .pkg-acts{display:flex;gap:5px;padding:0 12px 10px;}
 .pkg-edit-form{padding:0 12px 12px;display:none;}
 .pkg-edit-form.open{display:block;}
-.toggle{display:flex;align-items:center;gap:8px;margin-bottom:7px;cursor:pointer;}
-.toggle-box{width:40px;height:22px;background:rgba(255,255,255,.1);border-radius:11px;position:relative;transition:.2s;}
-.toggle-box.on{background:#7c3aed;}
-.toggle-box::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:.2s;}
-.toggle-box.on::after{left:21px;}
-.toggle-label{font-size:12px;}
+.vid-tag-pill{display:inline-block;padding:2px 8px;background:rgba(124,58,237,.2);color:#9f67fa;border-radius:8px;font-size:10px;font-weight:700;margin:2px 2px 2px 0;}
 .empty{text-align:center;padding:32px 20px;color:rgba(255,255,255,.22);}
 .empty .ei{font-size:34px;margin-bottom:7px;}
 .empty p{font-size:13px;}
@@ -98,21 +92,16 @@ select.inp option{background:#161630;color:#fff;}
 .bundle-sheet{background:var(--tg-theme-bg-color,#0d0d1a);border-radius:20px 20px 0 0;padding:18px 16px 32px;width:100%;max-width:480px;transform:translateY(100%);transition:transform .26s;max-height:80vh;overflow-y:auto;}
 .bundle-overlay.show .bundle-sheet{transform:translateY(0);}
 .bundle-item{display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.05);border-radius:9px;padding:9px 11px;margin-bottom:6px;font-size:12px;}
-.bundle-item .bi-info{display:flex;align-items:center;gap:7px;}
-.bundle-item .bi-type{font-size:18px;}
-.bundle-cmd{background:rgba(124,58,237,.18);border:1px solid rgba(124,58,237,.4);border-radius:9px;padding:10px 12px;font-size:12px;color:rgba(255,255,255,.7);margin-bottom:10px;line-height:1.6;}
 .uid{font-size:10px;color:rgba(255,255,255,.26);font-family:monospace;}
-.big-num{font-size:32px;font-weight:900;color:#7c3aed;}
-.big-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
 .chart-bar{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
-.chart-label{font-size:11px;color:rgba(255,255,255,.4);min-width:50px;text-align:right;}
+.chart-label{font-size:11px;color:rgba(255,255,255,.4);min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;}
 .chart-fill{height:18px;background:linear-gradient(135deg,#7c3aed,#2563eb);border-radius:9px;transition:width .4s;min-width:4px;}
-.chart-val{font-size:11px;font-weight:700;color:var(--muted);min-width:30px;}
-.top-item{background:var(--card);border-radius:10px;padding:10px;display:flex;align-items:center;gap:10px;margin-bottom:6px;border:1px solid var(--border);}
-.top-rank{width:28px;height:28px;border-radius:8px;background:rgba(124,58,237,.15);color:var(--purple2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;}
-.top-info{flex:1;}
-.top-title{font-size:13px;font-weight:700;}
-.top-meta{font-size:10px;color:var(--muted);}
+.chart-val{font-size:11px;font-weight:700;color:rgba(255,255,255,.55);min-width:30px;}
+/* Tag checkboxes for video upload */
+.tag-checks{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px;}
+.tag-check-lbl{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:12px;transition:all .15s;}
+.tag-check-lbl input{display:none;}
+.tag-check-lbl.selected{background:rgba(124,58,237,.25);border-color:rgba(124,58,237,.5);color:#9f67fa;}
 </style>
 </head>
 <body>
@@ -121,7 +110,7 @@ select.inp option{background:#161630;color:#fff;}
 <div class="tabs">
     <div class="tab active" onclick="showTab('users')"><span class="ti">👥</span>Üyeler</div>
     <div class="tab" onclick="showTab('videos')"><span class="ti">🎬</span>Videolar</div>
-    <div class="tab" onclick="showTab('cats')"><span class="ti">📂</span>Kategoriler</div>
+    <div class="tab" onclick="showTab('tags')"><span class="ti">🏷️</span>Etiketler</div>
     <div class="tab" onclick="showTab('packages')"><span class="ti">📦</span>Paketler</div>
     <div class="tab" onclick="showTab('channel')"><span class="ti">📺</span>Kanal</div>
     <div class="tab" onclick="showTab('stats')"><span class="ti">📊</span>İstatistik</div>
@@ -159,29 +148,29 @@ select.inp option{background:#161630;color:#fff;}
 <div id="tab-videos" class="tab-content">
     <div class="sec">📤 Panel'den Video Ekle</div>
     <div class="card"><div class="cb">
-        <div class="cm">Kategori seç, başlık gir → Hazırla → Bota videoyu gönder</div>
-        <select class="inp" id="v-cat"></select>
+        <div class="cm">Etiket seç, başlık gir → Hazırla → Bota videoyu gönder</div>
         <input class="inp" id="v-title" placeholder="Video Başlığı">
+        <div class="sec" style="margin-bottom:5px">Etiketler (birden fazla seçilebilir)</div>
+        <div class="tag-checks" id="v-tag-checks"><div class="loading" style="padding:8px">⏳ Yükleniyor...</div></div>
         <button class="btn btn-p" style="width:100%" onclick="prepareUpload()">📤 Hazırla & Bota Bildir</button>
-        <div class="upload-status" id="upload-status"></div>
+        <div id="upload-status" style="margin-top:7px;font-size:12px;display:none"></div>
     </div></div>
     <div class="divider"></div>
     <div class="sec">Mevcut Videolar</div>
     <div id="videos-list"><div class="loading">⏳</div></div>
 </div>
 
-<!-- CATEGORIES -->
-<div id="tab-cats" class="tab-content">
-    <div class="sec">Yeni Kategori Ekle</div>
+<!-- TAGS -->
+<div id="tab-tags" class="tab-content">
+    <div class="sec">Yeni Etiket Ekle</div>
     <div class="card"><div class="cb">
-        <div class="irow"><input class="inp" id="nc-emoji" placeholder="Emoji" style="max-width:62px" value="📁"><input class="inp" id="nc-slug" placeholder="slug (örn: aksiyon_tr)"></div>
-        <input class="inp" id="nc-label" placeholder="Görünen ad">
-        <select class="inp" id="nc-parent"><option value="">— Ana Kategori —</option></select>
-        <button class="btn btn-p" style="width:100%" onclick="addCategory()">➕ Ekle</button>
+        <div class="irow"><input class="inp" id="nt-emoji" placeholder="Emoji" style="max-width:62px" value="🏷️"><input class="inp" id="nt-slug" placeholder="slug (örn: aksiyon)"></div>
+        <input class="inp" id="nt-label" placeholder="Görünen ad (örn: Aksiyon)">
+        <button class="btn btn-p" style="width:100%" onclick="addTag()">➕ Etiket Ekle</button>
     </div></div>
     <div class="divider"></div>
-    <div class="sec">Mevcut Kategoriler</div>
-    <div id="cats-list"><div class="loading">⏳</div></div>
+    <div class="sec">Mevcut Etiketler</div>
+    <div id="tags-list"><div class="loading">⏳</div></div>
 </div>
 
 <!-- PACKAGES -->
@@ -204,21 +193,16 @@ select.inp option{background:#161630;color:#fff;}
         <div class="cm">Videoların gönderileceği kanal. Bot bu kanala admin eklenmeli.</div>
         <input class="inp" id="ch-id" placeholder="Kanal ID (örn: -1001234567890)">
         <button class="btn btn-p" style="width:100%" onclick="saveChannel()">💾 Kaydet</button>
-        <div id="ch-status" style="margin-top:8px;font-size:12px;color:var(--muted);"></div>
+        <div id="ch-status" style="margin-top:8px;font-size:12px;color:rgba(255,255,255,.4)"></div>
     </div></div>
     <div class="divider"></div>
-    <div class="sec">⭐ Kategorisiz Videolar</div>
-    <div class="cm" style="margin-bottom:10px">Kanaldan yakalanan ama henüz kategorisi atanmamış videolar</div>
-    <div id="uncat-videos"><div class="loading">⏳</div></div>
+    <div class="sec">🏷️ Etiketsiz Videolar</div>
+    <div class="cm" style="margin-bottom:10px">Kanaldan yakalanan ama henüz etiketi atanmamış videolar</div>
+    <div id="untagged-videos"><div class="loading">⏳</div></div>
     <div class="divider"></div>
     <div class="sec">Yardım</div>
     <div class="card"><div class="cb" style="font-size:12px;color:rgba(255,255,255,.45);line-height:1.6">
-        1️⃣ Kanal oluşturun<br>
-        2️⃣ Botu kanala admin olarak ekleyin<br>
-        3️⃣ Yukarıdaki ID'yi kaydedin<br>
-        4️⃣ Artık videolar kanala yüklenecek<br>
-        5️⃣ Bot kanaldaki videoları otomatik yakalar<br>
-        6️⃣ Admin buradan kategori atayabilir
+        1️⃣ Kanal oluşturun<br>2️⃣ Botu kanala admin olarak ekleyin<br>3️⃣ Yukarıdaki ID'yi kaydedin<br>4️⃣ Videolar kanala yüklenince bot yakalar<br>5️⃣ Admin buradan etiket atayabilir
     </div></div>
 </div>
 
@@ -238,7 +222,7 @@ select.inp option{background:#161630;color:#fff;}
 <div id="tab-bundle" class="tab-content">
     <div class="sec">Bundle Kütüphanesi</div>
     <div class="card"><div class="cb">
-        <div class="cm">Bot'a <strong>/bundle &lt;video_id&gt;</strong> yazıp resim/video gönderin, ardından <strong>/donebundle</strong> ile tamamlayın. Eklenen öğeler aşağıda görünür.</div>
+        <div class="cm">Bot'a <strong>/bundle &lt;video_id&gt;</strong> yazıp resim/video gönderin, ardından <strong>/donebundle</strong> ile tamamlayın.</div>
         <div class="irow">
             <select class="inp" id="bl-vid-sel" style="margin:0;flex:1"><option value="">— Hızlı Bundle Başlat —</option></select>
             <button class="btn btn-i" style="flex:none;padding:0 10px" onclick="blShowCmd()">📋</button>
@@ -248,9 +232,7 @@ select.inp option{background:#161630;color:#fff;}
     <div class="divider"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
         <div class="sec" style="margin:0">Tüm Bundle Öğeleri</div>
-        <select class="inp" id="bl-filter" style="margin:0;font-size:11px;padding:4px 7px;width:auto" onchange="renderBundleLib()">
-            <option value="">Tümü</option>
-        </select>
+        <select class="inp" id="bl-filter" style="margin:0;font-size:11px;padding:4px 7px;width:auto" onchange="renderBundleLib()"><option value="">Tümü</option></select>
     </div>
     <div id="bundle-lib-list"><div class="loading">⏳</div></div>
 </div>
@@ -295,11 +277,9 @@ select.inp option{background:#161630;color:#fff;}
             <div><div class="conf-title" id="bundle-title">📦 Bundle</div><div class="uid" id="bundle-sub"></div></div>
             <button class="btn btn-k" onclick="closeBundle()" style="flex:none;padding:6px 12px;font-size:12px">✕ Kapat</button>
         </div>
-        <div class="bundle-cmd" id="bundle-cmd-box"></div>
+        <div id="bundle-cmd-box" style="background:rgba(124,58,237,.13);border:1px solid rgba(124,58,237,.3);border-radius:9px;padding:10px 12px;font-size:12px;color:rgba(255,255,255,.7);margin-bottom:10px;line-height:1.6"></div>
         <div id="bundle-items-list"><div class="loading">⏳</div></div>
-        <div class="btn-row" style="margin-top:10px">
-            <button class="btn btn-d" onclick="clearBundle()" id="bundle-clear-btn">🗑️ Tümünü Sil</button>
-        </div>
+        <div class="btn-row" style="margin-top:10px"><button class="btn btn-d" onclick="clearBundle()" id="bundle-clear-btn">🗑️ Tümünü Sil</button></div>
     </div>
 </div>
 <div class="confirm-overlay" id="cov">
@@ -313,73 +293,60 @@ select.inp option{background:#161630;color:#fff;}
 <script>
 const tg=window.Telegram.WebApp;tg.ready();tg.expand();
 document.getElementById('admin-info').textContent='Admin: '+(tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.first_name||'Admin')+' ✓';
-const TABS=['users','videos','cats','packages','channel','stats','payments','bundle','destek','tools'];
+const TABS=['users','videos','tags','packages','channel','stats','payments','bundle','destek','tools'];
 let confirmAction=null;
+
 function showTab(tab){
-    document.querySelectorAll('.tab-content').forEach(function(t){t.classList.remove('active');});
-    document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+    document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
     document.getElementById('tab-'+tab).classList.add('active');
     document.querySelectorAll('.tab')[TABS.indexOf(tab)].classList.add('active');
     if(tab==='users')loadUsers();
-    if(tab==='videos'){loadVideos();loadCatOptions();}
-    if(tab==='cats'){loadCats();loadParentOptions();}
+    if(tab==='videos'){loadVideos();loadTagCheckboxes();}
+    if(tab==='tags')loadTags();
     if(tab==='packages')loadPackages();
-    if(tab==='channel'){loadChannel();loadUncategorizedVideos();}
+    if(tab==='channel'){loadChannel();loadUntaggedVideos();}
     if(tab==='stats')loadStatsView();
     if(tab==='payments')loadPayments();
     if(tab==='bundle')loadBundleLib();
     if(tab==='destek')loadDestek();
 }
-function toast(msg,err){
-    const t=document.getElementById('toast');
-    t.textContent=msg;t.className='toast show'+(err?' err':'');
-    setTimeout(function(){t.classList.remove('show');},3000);
-}
-function confirm2(title,text,fn){
-    document.getElementById('c-title').textContent=title;
-    document.getElementById('c-text').textContent=text;
-    confirmAction=fn;document.getElementById('cov').classList.add('show');
-}
+function toast(msg,err){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(err?' err':'');setTimeout(()=>t.classList.remove('show'),3000);}
+function confirm2(title,text,fn){document.getElementById('c-title').textContent=title;document.getElementById('c-text').textContent=text;confirmAction=fn;document.getElementById('cov').classList.add('show');}
 function closeCon(){document.getElementById('cov').classList.remove('show');confirmAction=null;}
 document.getElementById('c-ok').onclick=function(){if(confirmAction)confirmAction();closeCon();};
 document.getElementById('cov').addEventListener('click',function(e){if(e.target.id==='cov')closeCon();});
+function esc2(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');}
 async function api(path,method,body){
     var o={method:method||'GET',headers:{'Content-Type':'application/json'}};
     if(body)o.body=JSON.stringify(body);
-    var r=await fetch('/api'+path,o);
-    return r.json();
+    var r=await fetch('/api'+path,o);return r.json();
 }
 
 // STATS
 async function loadStats(){
     try{
-        var d=await api('/stats');
-        var v=d.views||{};
-        document.getElementById('stats-grid').innerHTML='<div class="stat-card"><div class="icon">👥</div><div class="value">'+d.total_users+'</div><div class="label">Toplam Üye</div></div><div class="stat-card"><div class="icon">⭐</div><div class="value">'+d.premium_users+'</div><div class="label">Premium</div></div><div class="stat-card"><div class="icon">🎬</div><div class="value">'+d.total_videos+'</div><div class="label">Video</div></div><div class="stat-card"><div class="icon">👁️</div><div class="value">'+(v.total_views||0)+'</div><div class="label">Toplam İzlenme</div></div>';
+        var d=await api('/stats');var v=d.views||{};
+        document.getElementById('stats-grid').innerHTML=
+            '<div class="stat-card"><div class="icon">👥</div><div class="value">'+d.total_users+'</div><div class="label">Toplam Üye</div></div>'
+            +'<div class="stat-card"><div class="icon">⭐</div><div class="value">'+d.premium_users+'</div><div class="label">Premium</div></div>'
+            +'<div class="stat-card"><div class="icon">🎬</div><div class="value">'+d.total_videos+'</div><div class="label">Video</div></div>'
+            +'<div class="stat-card"><div class="icon">🏷️</div><div class="value">'+(d.total_tags||0)+'</div><div class="label">Etiket</div></div>';
     }catch(e){document.getElementById('stats-grid').innerHTML='<div class="loading">❌</div>';}
 }
 
 // USERS
 var _allUsers=[];
-function fmtDate(s){if(!s)return '—';var d=s.substring(0,10);return d;}
-function fmtSeen(s){
-    if(!s)return '—';
-    var now=new Date();var d=new Date(s.replace(' ','T'));
-    var diff=Math.floor((now-d)/1000);
-    if(diff<60)return diff+'sn önce';
-    if(diff<3600)return Math.floor(diff/60)+'dk önce';
-    if(diff<86400)return Math.floor(diff/3600)+'sa önce';
-    return Math.floor(diff/86400)+'g önce';
-}
+function fmtDate(s){if(!s)return '—';return s.substring(0,10);}
+function fmtSeen(s){if(!s)return '—';var now=new Date();var d=new Date(s.replace(' ','T'));var diff=Math.floor((now-d)/1000);if(diff<60)return diff+'sn önce';if(diff<3600)return Math.floor(diff/60)+'dk önce';if(diff<86400)return Math.floor(diff/3600)+'sa önce';return Math.floor(diff/86400)+'g önce';}
 function renderUsers(list){
     if(!list||!list.length){document.getElementById('users-list').innerHTML='<div class="empty"><div class="ei">👥</div><p>Sonuç yok</p></div>';return;}
     document.getElementById('users-list').innerHTML=list.map(function(u){
         var dispName=(u.first_name||'')+(u.username?' @'+u.username:'');
         var initials=((u.first_name||'?')[0]).toUpperCase();
-        var photoUrl='/api/user/photo/'+u.user_id;
         return '<div class="card"><div class="cb" style="display:flex;gap:10px;align-items:flex-start">'
             +'<div style="position:relative;flex-shrink:0">'
-            +'<img src="'+photoUrl+'" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'" style="width:42px;height:42px;border-radius:50%;object-fit:cover">'
+            +'<img src="/api/user/photo/'+u.user_id+'" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'" style="width:42px;height:42px;border-radius:50%;object-fit:cover">'
             +'<div style="display:none;width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#2563eb);align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff">'+initials+'</div>'
             +(u.active?'<div style="position:absolute;bottom:0;right:0;width:12px;height:12px;border-radius:50%;background:#22c55e;border:2px solid #0d0d1a"></div>':'')
             +'</div>'
@@ -396,303 +363,196 @@ function renderUsers(list){
             +'<button class="btn btn-i" style="font-size:10px" onclick="setManual('+u.user_id+')">✏️ Özel</button>'
             +'<button class="btn btn-d" style="font-size:10px" onclick="confRevoke('+u.user_id+')">🗑️</button>'
             +'<button class="btn btn-k" style="font-size:10px" onclick="copyId('+u.user_id+')">📋</button>'
-            +'</div>'
-            +'</div></div></div>';
+            +'</div></div></div></div>';
     }).join('');
 }
-function filterUsers(q){
-    if(!q){renderUsers(_allUsers);return;}
-    q=q.toLowerCase();
-    renderUsers(_allUsers.filter(function(u){
-        return String(u.user_id).includes(q)||(u.first_name||'').toLowerCase().includes(q)||(u.username||'').toLowerCase().includes(q);
-    }));
-}
+function filterUsers(q){if(!q){renderUsers(_allUsers);return;}q=q.toLowerCase();renderUsers(_allUsers.filter(u=>String(u.user_id).includes(q)||(u.first_name||'').toLowerCase().includes(q)||(u.username||'').toLowerCase().includes(q)));}
 function setManual(uid){document.getElementById('m-uid').value=uid;document.getElementById('m-uid').scrollIntoView({behavior:'smooth'});}
 async function giftAllUsers(){
     var days=parseInt(document.getElementById('gift-days-u').value)||30;
     if(days<1){toast('Geçersiz gün!',true);return;}
-    confirm2('🎁 Herkese Premium','Tüm kullanıcılara '+days+' gün premium eklenecek ve herkese Telegram bildirimi gönderilecek. Onaylıyor musunuz?',async function(){
-        toast('⏳ İşleniyor...');
-        var r=await api('/admin/gift-all','POST',{days:days,notify:true});
-        toast(r.success?'🎁 '+r.count+' kullanıcıya '+days+' gün eklendi! Bildirimler gönderiliyor...':'❌ '+(r.error||''),!r.success);
+    confirm2('🎁 Herkese Premium','Tüm kullanıcılara '+days+' gün premium eklenecek. Onaylıyor musunuz?',async function(){
+        toast('⏳ İşleniyor...');var r=await api('/admin/gift-all','POST',{days:days,notify:true});
+        toast(r.success?'🎁 '+r.count+' kullanıcıya '+days+' gün eklendi!':'❌ '+(r.error||''),!r.success);
         if(r.success){loadStats();loadUsers();}
     });
 }
 async function loadUsers(){
     document.getElementById('users-list').innerHTML='<div class="loading">⏳</div>';
-    var d=await api('/users');
-    _allUsers=d.users||[];
-    document.getElementById('user-count').textContent=_allUsers.length;
-    renderUsers(_allUsers);
+    var d=await api('/users');_allUsers=d.users||[];
+    document.getElementById('user-count').textContent=_allUsers.length;renderUsers(_allUsers);
 }
-async function givePremium(){
-    var uid=document.getElementById('m-uid').value,days=document.getElementById('m-days').value||30;
-    if(!uid){toast('ID girin!',true);return;}
-    var r=await api('/users/premium','POST',{user_id:+uid,days:+days});
-    toast(r.success?'✅ '+uid+' → '+days+' gün!':'❌ '+(r.error||''),!r.success);
-    if(r.success){loadStats();loadUsers();document.getElementById('m-uid').value='';}
-}
-async function revokePremium(){
-    var uid=document.getElementById('m-uid').value;
-    if(!uid){toast('ID girin!',true);return;}
-    confirm2('Premium Kaldır',uid+' kullanıcısının premiumunu kaldır?',async function(){
-        var r=await api('/users/'+uid+'/revoke','POST');
-        toast(r.success?'✅ Kaldırıldı!':'❌ '+(r.error||''),!r.success);
-        if(r.success){loadStats();loadUsers();}
-    });
-}
-async function extendP(uid){
-    var r=await api('/users/premium','POST',{user_id:uid,days:30});
-    toast(r.success?'✅ +30 gün!':'❌ '+(r.error||''),!r.success);
-    if(r.success)loadUsers();
-}
+async function givePremium(){var uid=document.getElementById('m-uid').value,days=document.getElementById('m-days').value||30;if(!uid){toast('ID girin!',true);return;}var r=await api('/users/premium','POST',{user_id:+uid,days:+days});toast(r.success?'✅ '+uid+' → '+days+' gün!':'❌ '+(r.error||''),!r.success);if(r.success){loadStats();loadUsers();document.getElementById('m-uid').value='';}}
+async function revokePremium(){var uid=document.getElementById('m-uid').value;if(!uid){toast('ID girin!',true);return;}confirm2('Premium Kaldır',uid+' kullanıcısının premiumunu kaldır?',async function(){var r=await api('/users/'+uid+'/revoke','POST');toast(r.success?'✅ Kaldırıldı!':'❌ '+(r.error||''),!r.success);if(r.success){loadStats();loadUsers();}});}
+async function extendP(uid){var r=await api('/users/premium','POST',{user_id:uid,days:30});toast(r.success?'✅ +30 gün!':'❌ '+(r.error||''),!r.success);if(r.success)loadUsers();}
 function confRevoke(uid){confirm2('Sil',uid+' kullanıcısını sil?',async function(){var r=await api('/users/'+uid+'/revoke','POST');toast(r.success?'✅ Silindi!':'❌ '+(r.error||''),!r.success);if(r.success){loadStats();loadUsers();}});}
-function copyId(uid){navigator.clipboard.writeText(String(uid)).then(function(){toast('📋 Kopyalandı!');});}
+function copyId(uid){navigator.clipboard.writeText(String(uid)).then(()=>toast('📋 Kopyalandı!'));}
 
-// VIDEOS
-async function loadCatOptions(){
-    var d=await api('/categories');
-    document.getElementById('v-cat').innerHTML=d.categories.map(function(c){return '<option value="'+c.slug+'">'+c.emoji+' '+c.label+'</option>';}).join('');
-}
-async function prepareUpload(){
-    var cat=document.getElementById('v-cat').value,title=document.getElementById('v-title').value.trim();
-    if(!title){toast('Başlık girin!',true);return;}
-    var r=await api('/videos/prepare','POST',{category:cat,title:title});
-    var st=document.getElementById('upload-status');
-    if(r.success){st.classList.add('show');st.innerHTML='✅ Hazırlandı! <strong>Bota videoyu gönderin</strong><br><small>📂 '+cat+' → 🎬 '+title+'</small>';toast('✅ Bot bildirim gönderdi!');document.getElementById('v-title').value='';}
-    else toast('❌ '+(r.error||''),true);
-}
-function buildGroupedCatOptions(cats,placeholder){
-    var all=cats||[];
-    var parents=all.filter(function(c){return !c.parent_id;});
-    var byParent={};
-    all.forEach(function(c){if(c.parent_id){(byParent[c.parent_id]=byParent[c.parent_id]||[]).push(c);}});
-    var html='<option value="">'+(placeholder||'— Kategori Seç —')+'</option>';
-    parents.forEach(function(p){
-        html+='<option value="'+p.slug+'">'+p.emoji+' '+p.label+'</option>';
-        (byParent[p.id]||[]).forEach(function(s){
-            html+='<option value="'+s.slug+'">'+p.emoji+' └ '+s.label+'</option>';
-        });
-    });
-    return html;
-}
-var _allCatOptions='';
-async function loadVideos(){
-    document.getElementById('videos-list').innerHTML='<div class="loading">⏳</div>';
-    var dv=await api('/videos');
-    var dc=await api('/categories');
-    _allCatOptions=buildGroupedCatOptions(dc.categories,'— Kategori Seç —');
-    if(!dv.videos||!dv.videos.length){document.getElementById('videos-list').innerHTML='<div class="empty"><div class="ei">🎬</div><p>Video yok</p></div>';return;}
-    var colors=['bb','bg','by','br','bp'];var catIdx={};
-    document.getElementById('videos-list').innerHTML=dv.videos.map(function(v){
-        var catLabel=v.category||null;
-        if(!(catLabel in catIdx))catIdx[catLabel]=Object.keys(catIdx).length%colors.length;
-        var cls=colors[catIdx[catLabel]];
-        var badgeTxt=catLabel?catLabel:'📺 Kategorisiz';
-        var badgeCls=catLabel?('badge '+cls):'badge br';
-        var safeT=v.title.replace(/'/g,"\\'");
-        var catRow='<div style="display:flex;gap:5px;margin-top:6px"><select class="inp" id="vcat-'+v.id+'" style="margin:0;flex:1">'+_allCatOptions+'</select><button class="btn btn-s" style="flex:none;padding:0 10px" onclick="quickCat('+v.id+')">✅</button></div>';
-        return '<div class="card"><div class="cb"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px"><div style="flex:1;margin-right:7px"><div class="ct">'+v.title+'</div><div class="uid">#'+v.id+'</div></div><span class="'+badgeCls+'">'+badgeTxt+'</span></div>'+catRow+'<div class="btn-row" style="margin-top:6px"><button class="btn btn-i" onclick="openBundle('+v.id+',\''+safeT+'\')">📦 Bundle</button><button class="btn btn-d" onclick="confDelVideo('+v.id+',\''+safeT+'\')">🗑️ Sil</button></div></div></div>';
+// TAGS
+var _allTagsData=[];
+async function loadTags(){
+    document.getElementById('tags-list').innerHTML='<div class="loading">⏳</div>';
+    var d=await api('/tags');_allTagsData=d.tags||[];
+    if(!_allTagsData.length){document.getElementById('tags-list').innerHTML='<div class="empty"><div class="ei">🏷️</div><p>Etiket yok</p></div>';return;}
+    document.getElementById('tags-list').innerHTML=_allTagsData.map(function(tag){
+        return '<div class="tag-item" id="tagcard-'+tag.id+'"><div class="tag-head"><div class="tag-emoji">'+(tag.emoji||'🏷️')+'</div><div class="tag-info"><div class="tn">'+esc2(tag.label)+'</div><div class="ts">'+esc2(tag.slug)+'</div></div><div class="tag-cnt">'+tag.count+' video</div></div>'
+            +'<div class="tag-acts"><button class="btn btn-i" style="flex:1" onclick="toggleTagEdit('+tag.id+')">✏️ Düzenle</button><button class="btn btn-d" style="flex:1" onclick="confDelTag('+tag.id+',\''+tag.label.replace(/'/g,"\\'") +'\')">🗑️ Sil</button></div>'
+            +'<div class="tag-edit-form" id="tedit-'+tag.id+'"><div class="irow"><input class="inp" id="te-emoji-'+tag.id+'" value="'+(tag.emoji||'🏷️')+'" placeholder="Emoji" style="max-width:55px;margin-bottom:0"><input class="inp" id="te-label-'+tag.id+'" value="'+esc2(tag.label)+'" placeholder="Görünen Ad" style="margin-bottom:0"></div><button class="btn btn-s" style="width:100%;margin-top:5px" onclick="saveEditTag('+tag.id+')">💾 Kaydet</button></div>'
+            +'</div>';
     }).join('');
 }
-async function quickCat(id){
-    var sel=document.getElementById('vcat-'+id);
-    if(!sel||!sel.value){toast('Kategori seçin!',true);return;}
-    var r=await api('/videos/'+id+'/categorize','POST',{category:sel.value});
-    toast(r.success?'✅ Kategori atandı!':'❌ '+(r.error||''),!r.success);
+function toggleTagEdit(id){document.getElementById('tedit-'+id).classList.toggle('open');}
+async function saveEditTag(id){
+    var label=document.getElementById('te-label-'+id).value.trim(),emoji=document.getElementById('te-emoji-'+id).value.trim();
+    if(!label){toast('Ad boş!',true);return;}
+    var r=await api('/tags/'+id,'PUT',{label:label,emoji:emoji});
+    toast(r.success?'✅ Güncellendi!':'❌ '+(r.error||''),!r.success);if(r.success)loadTags();
+}
+async function addTag(){
+    var slug=document.getElementById('nt-slug').value.trim(),label=document.getElementById('nt-label').value.trim(),emoji=document.getElementById('nt-emoji').value.trim()||'🏷️';
+    if(!slug||!label){toast('Slug ve ad gerekli!',true);return;}
+    var r=await api('/tags','POST',{slug:slug,label:label,emoji:emoji});
+    toast(r.success?'✅ Eklendi!':'❌ '+(r.error||''),!r.success);
+    if(r.success){['nt-slug','nt-label'].forEach(id=>{document.getElementById(id).value='';});document.getElementById('nt-emoji').value='🏷️';loadStats();loadTags();}
+}
+function confDelTag(id,label){confirm2('Etiket Sil','"'+label+'" silinecek?',async function(){var r=await api('/tags/'+id,'DELETE');toast(r.success?'✅ Silindi!':'❌ '+(r.error||''),!r.success);if(r.success){loadStats();loadTags();}});}
+
+// VIDEOS
+async function loadTagCheckboxes(){
+    var d=await api('/tags');var tags=d.tags||[];
+    var el=document.getElementById('v-tag-checks');
+    if(!tags.length){el.innerHTML='<div style="font-size:12px;color:rgba(255,255,255,.3)">Henüz etiket yok. Önce Etiketler sekmesinden ekleyin.</div>';return;}
+    el.innerHTML=tags.map(function(t){return '<label class="tag-check-lbl" id="tclbl-'+t.id+'" onclick="toggleTagCheck('+t.id+',this)"><input type="checkbox" value="'+t.id+'">'+(t.emoji||'🏷️')+' '+esc2(t.label)+'</label>';}).join('');
+}
+function toggleTagCheck(id,el){el.classList.toggle('selected');}
+function getSelectedTagIds(){return Array.from(document.querySelectorAll('#v-tag-checks input:checked')).map(i=>parseInt(i.value));}
+async function prepareUpload(){
+    var title=document.getElementById('v-title').value.trim();
+    if(!title){toast('Başlık girin!',true);return;}
+    var tagIds=getSelectedTagIds();
+    var r=await api('/videos/prepare','POST',{tag_ids:tagIds,title:title});
+    var st=document.getElementById('upload-status');
+    if(r.success){
+        st.style.display='block';st.textContent='✅ Hazırlandı! Bota videoyu gönderin → 🎬 '+title;
+        toast('✅ Bot bildirim gönderdi!');document.getElementById('v-title').value='';
+        document.querySelectorAll('#v-tag-checks .selected').forEach(el=>{el.classList.remove('selected');});
+    }else toast('❌ '+(r.error||''),true);
+}
+var _allTagOpts='';
+async function loadVideos(){
+    document.getElementById('videos-list').innerHTML='<div class="loading">⏳</div>';
+    var dv=await api('/videos');var dt=await api('/tags');
+    _allTagOpts=(dt.tags||[]).map(t=>'<option value="'+t.id+'">'+t.emoji+' '+esc2(t.label)+'</option>').join('');
+    if(!dv.videos||!dv.videos.length){document.getElementById('videos-list').innerHTML='<div class="empty"><div class="ei">🎬</div><p>Video yok</p></div>';return;}
+    document.getElementById('videos-list').innerHTML=dv.videos.map(function(v){
+        var tagsHtml=(v.tags&&v.tags.length)?v.tags.map(t=>'<span class="vid-tag-pill">'+(t.emoji||'🏷️')+' '+esc2(t.label)+'</span>').join(''):' <span style="font-size:11px;color:rgba(255,255,255,.3)">Etiketsiz</span>';
+        var safeT=(v.title||'').replace(/'/g,"\\'");
+        return '<div class="card"><div class="cb">'
+            +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">'
+            +'<div style="flex:1;margin-right:7px"><div class="ct">'+esc2(v.title)+'</div><div class="uid">#'+v.id+'</div></div>'
+            +'</div>'
+            +'<div style="margin-bottom:6px">'+tagsHtml+'</div>'
+            +'<div style="font-size:10px;color:rgba(255,255,255,.3);margin-bottom:6px">Etiket değiştir:</div>'
+            +'<div id="vtag-sel-'+v.id+'" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px">'
+            +(dt.tags||[]).map(function(t){
+                var checked=(v.tags||[]).some(vt=>vt.slug===t.slug);
+                return '<label class="tag-check-lbl'+(checked?' selected':'')+'" onclick="this.classList.toggle(\'selected\')">'
+                    +'<input type="checkbox" value="'+t.id+'"'+(checked?' checked':'')+'>'+(t.emoji||'🏷️')+' '+esc2(t.label)+'</label>';
+            }).join('')
+            +'</div>'
+            +'<div class="btn-row">'
+            +'<button class="btn btn-s" onclick="saveVideoTags('+v.id+')">💾 Etiket Kaydet</button>'
+            +'<button class="btn btn-i" onclick="openBundle('+v.id+',\''+safeT+'\')">📦 Bundle</button>'
+            +'<button class="btn btn-d" onclick="confDelVideo('+v.id+',\''+safeT+'\')">🗑️ Sil</button>'
+            +'</div></div></div>';
+    }).join('');
+}
+async function saveVideoTags(vid){
+    var checkedIds=Array.from(document.querySelectorAll('#vtag-sel-'+vid+' input:checked')).map(i=>parseInt(i.value));
+    var r=await api('/videos/'+vid+'/set-tags','POST',{tag_ids:checkedIds});
+    toast(r.success?'✅ Etiketler kaydedildi!':'❌ '+(r.error||''),!r.success);
     if(r.success)loadVideos();
 }
 function confDelVideo(id,title){confirm2('Video Sil','"'+title+'" silinecek?',async function(){var r=await api('/videos/'+id,'DELETE');toast(r.success?'✅ Silindi!':'❌ '+(r.error||''),!r.success);if(r.success){loadStats();loadVideos();}});}
 
 /* ===== DESTEK ===== */
-function esc2(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');}
 async function loadDestek(){
     document.getElementById('destek-list').innerHTML='<div class="loading">⏳</div>';
-    var d=await api('/support');
-    var threads=d.threads||[];
+    var d=await api('/support');var threads=d.threads||[];
     if(!threads.length){document.getElementById('destek-list').innerHTML='<div class="empty"><div class="ei">📭</div><p>Mesaj yok</p></div>';return;}
     document.getElementById('destek-list').innerHTML=threads.map(function(t){
-        var uid=t.user_id;
-        var msgs=t.messages||[];
+        var uid=t.user_id;var msgs=t.messages||[];
         var bubbles=msgs.map(function(m){
             var isAdmin=m.sender==='admin';
             var bg=isAdmin?'rgba(124,58,237,.18)':'rgba(255,255,255,.07)';
             var align=isAdmin?'flex-end':'flex-start';
-            var radius=isAdmin?'12px 12px 4px 12px':'12px 12px 12px 4px';
             var lbl=isAdmin?'<span style="font-size:10px;color:rgba(124,58,237,.8);font-weight:700;display:block;margin-bottom:2px">Admin</span>':'<span style="font-size:10px;color:rgba(255,255,255,.4);font-weight:700;display:block;margin-bottom:2px">Kullanıcı</span>';
-            return '<div style="display:flex;justify-content:'+align+';margin-bottom:5px"><div style="background:'+bg+';border-radius:'+radius+';padding:7px 11px;max-width:85%;font-size:12px;line-height:1.5">'+lbl+esc2(m.message)+'<div style="font-size:10px;color:rgba(255,255,255,.3);text-align:right;margin-top:3px">'+m.sent_at.substring(11,16)+'</div></div></div>';
+            return '<div style="display:flex;justify-content:'+align+';margin-bottom:5px"><div style="background:'+bg+';border-radius:12px;padding:7px 11px;max-width:85%;font-size:12px;line-height:1.5">'+lbl+esc2(m.message)+'<div style="font-size:10px;color:rgba(255,255,255,.3);text-align:right;margin-top:3px">'+m.sent_at.substring(11,16)+'</div></div></div>';
         }).join('');
         return '<div class="card" style="margin-bottom:12px"><div class="cb"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div><div class="ct" style="font-size:13px">'+esc2(t.name)+'</div><div class="uid">🆔 '+uid+'</div></div><div style="display:flex;gap:6px;align-items:center"><span style="font-size:10px;color:rgba(255,255,255,.35)">'+t.last_at.substring(0,16)+'</span><button class="btn btn-d" style="font-size:11px;padding:3px 9px" onclick="delDestek('+uid+')">🗑️</button></div></div>'
             +'<div style="max-height:260px;overflow-y:auto;padding:8px;background:rgba(0,0,0,.15);border-radius:10px;margin-bottom:8px">'+bubbles+'</div>'
-            +'<div style="display:flex;gap:6px"><input class="inp" id="rep-'+uid+'" placeholder="Yanıt yaz..." style="margin:0;flex:1;font-size:12px"><button class="btn btn-p" style="flex:none;padding:0 12px;font-size:13px" onclick="replyDestek('+uid+')">📤</button></div></div></div>';
+            +'<div style="display:flex;gap:6px"><input class="inp" id="rep-'+uid+'" placeholder="Yanıt yaz..." style="margin:0;flex:1;font-size:12px"><button class="btn btn-p" style="flex:none;padding:0 12px" onclick="replyDestek('+uid+')">📤</button></div></div></div>';
     }).join('');
 }
-async function replyDestek(uid){
-    var inp=document.getElementById('rep-'+uid);
-    if(!inp||!inp.value.trim()){toast('Yanıt boş!',true);return;}
-    var r=await api('/support/'+uid+'/reply','POST',{reply:inp.value.trim()});
-    toast(r.success?'✅ Yanıt gönderildi!':'❌ '+(r.error||''),!r.success);
-    if(r.success)loadDestek();
-}
-async function delDestek(uid){
-    var r=await api('/support/'+uid,'DELETE');
-    toast(r.success?'✅ Sohbet silindi!':'❌ Hata',!r.success);
-    if(r.success)loadDestek();
-}
+async function replyDestek(uid){var inp=document.getElementById('rep-'+uid);if(!inp||!inp.value.trim()){toast('Yanıt boş!',true);return;}var r=await api('/support/'+uid+'/reply','POST',{reply:inp.value.trim()});toast(r.success?'✅ Yanıt gönderildi!':'❌ '+(r.error||''),!r.success);if(r.success)loadDestek();}
+async function delDestek(uid){var r=await api('/support/'+uid,'DELETE');toast(r.success?'✅ Sohbet silindi!':'❌ Hata',!r.success);if(r.success)loadDestek();}
 async function giftAll(){
-    var days=parseInt(document.getElementById('gift-days').value)||30;
-    if(days<1){toast('Geçersiz gün!',true);return;}
-    confirm2('Toplu Hediye','Tüm kullanıcılara '+days+' gün premium eklenecek. Onaylıyor musunuz?',async function(){
-        var r=await api('/admin/gift-all','POST',{days:days});
-        toast(r.success?'🎁 '+r.count+' kullanıcıya '+days+' gün eklendi!':'❌ '+(r.error||''),!r.success);
-    });
+    var days=parseInt(document.getElementById('gift-days').value)||30;if(days<1){toast('Geçersiz gün!',true);return;}
+    confirm2('Toplu Hediye','Tüm kullanıcılara '+days+' gün premium eklenecek. Onaylıyor musunuz?',async function(){var r=await api('/admin/gift-all','POST',{days:days});toast(r.success?'🎁 '+r.count+' kullanıcıya '+days+' gün eklendi!':'❌ '+(r.error||''),!r.success);});
 }
-/* ===== /DESTEK ===== */
 
 /* ===== BUNDLE LIBRARY ===== */
 var _blItems=[];
 async function loadBundleLib(){
     document.getElementById('bundle-lib-list').innerHTML='<div class="loading">⏳</div>';
-    var dv=await api('/videos');
-    var db=await api('/bundles/all');
-    _blItems=db.items||[];
-    var vids=(dv.videos||[]);
-    // Hızlı başlat seçici
+    var dv=await api('/videos');var db2=await api('/bundles/all');
+    _blItems=db2.items||[];var vids=(dv.videos||[]);
     var sel=document.getElementById('bl-vid-sel');
-    sel.innerHTML='<option value="">— Hızlı Bundle Başlat —</option>'+vids.map(function(v){return '<option value="'+v.id+'">'+v.title+'</option>';}).join('');
-    // Filtre dropdown
-    var fil=document.getElementById('bl-filter');
-    var vidsSeen={};
-    _blItems.forEach(function(it){vidsSeen[it.video_id]=it.video_title;});
-    fil.innerHTML='<option value="">Tümü</option>'+Object.keys(vidsSeen).map(function(vid){return '<option value="'+vid+'">'+vidsSeen[vid]+'</option>';}).join('');
-    // Atama dropdownları için video seçenekleri
-    window._blVidOpts='<option value="">— Video Seç —</option>'+vids.map(function(v){return '<option value="'+v.id+'">'+v.title+'</option>';}).join('');
+    sel.innerHTML='<option value="">— Hızlı Bundle Başlat —</option>'+vids.map(v=>'<option value="'+v.id+'">'+esc2(v.title)+'</option>').join('');
+    var fil=document.getElementById('bl-filter');var vidsSeen={};
+    _blItems.forEach(it=>{vidsSeen[it.video_id]=it.video_title;});
+    fil.innerHTML='<option value="">Tümü</option>'+Object.keys(vidsSeen).map(vid=>'<option value="'+vid+'">'+vidsSeen[vid]+'</option>').join('');
+    window._blVidOpts='<option value="">— Video Seç —</option>'+vids.map(v=>'<option value="'+v.id+'">'+esc2(v.title)+'</option>').join('');
     renderBundleLib();
 }
 function renderBundleLib(){
     var filterVid=document.getElementById('bl-filter').value;
-    var items=filterVid?_blItems.filter(function(it){return String(it.video_id)===filterVid;}):_blItems;
+    var items=filterVid?_blItems.filter(it=>String(it.video_id)===filterVid):_blItems;
     var el=document.getElementById('bundle-lib-list');
     if(!items.length){el.innerHTML='<div class="empty"><div class="ei">📭</div><p>Henüz bundle öğesi yok</p></div>';return;}
-    // Videoya göre grupla
     var groups={};
-    items.forEach(function(it){
-        var k=it.video_id;
-        if(!groups[k])groups[k]={title:it.video_title,items:[]};
-        groups[k].items.push(it);
-    });
+    items.forEach(it=>{var k=it.video_id;if(!groups[k])groups[k]={title:it.video_title,items:[]};groups[k].items.push(it);});
     var html='';
-    Object.keys(groups).forEach(function(vid){
-        var g=groups[vid];
-        html+='<div class="sec" style="margin-top:10px">🎬 '+g.title+' <span style="font-weight:400;text-transform:none">(#'+vid+')</span></div>';
+    Object.keys(groups).forEach(vid=>{
+        var g=groups[vid];html+='<div class="sec" style="margin-top:10px">🎬 '+g.title+' <span style="font-weight:400;text-transform:none">(#'+vid+')</span></div>';
         g.items.forEach(function(it,i){
-            var ico=it.file_type==='photo'?'📸':'🎬';
-            var lbl=it.file_type==='photo'?'Resim':'Video';
-            html+='<div class="card"><div class="cb" style="padding:9px 11px">';
-            html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><span style="font-size:20px">'+ico+'</span><span style="font-size:13px;font-weight:700">'+lbl+' '+(i+1)+'</span></div>';
-            html+='<div style="display:flex;gap:5px"><select class="inp" id="bla-'+it.id+'" style="margin:0;flex:1">'+window._blVidOpts+'</select><button class="btn btn-s" style="flex:none;padding:0 10px" onclick="blAssign('+it.id+')">✅</button><button class="btn btn-d" style="flex:none;padding:0 10px" onclick="blDel('+it.id+')">🗑️</button></div>';
-            html+='</div></div>';
+            var ico=it.file_type==='photo'?'📸':'🎬';var lbl=it.file_type==='photo'?'Resim':'Video';
+            html+='<div class="card"><div class="cb" style="padding:9px 11px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><span style="font-size:20px">'+ico+'</span><span style="font-size:13px;font-weight:700">'+lbl+' '+(i+1)+'</span></div><div style="display:flex;gap:5px"><select class="inp" id="bla-'+it.id+'" style="margin:0;flex:1">'+window._blVidOpts+'</select><button class="btn btn-s" style="flex:none;padding:0 10px" onclick="blAssign('+it.id+')">✅</button><button class="btn btn-d" style="flex:none;padding:0 10px" onclick="blDel('+it.id+')">🗑️</button></div></div></div>';
         });
     });
     el.innerHTML=html;
 }
-function blShowCmd(){
-    var sel=document.getElementById('bl-vid-sel');
-    var box=document.getElementById('bl-cmd-box');
-    if(!sel.value){toast('Video seçin!',true);return;}
-    box.style.display='block';
-    box.innerHTML='📋 Bot\'a yazın:<br><strong>/bundle '+sel.value+'</strong><br>→ Resim/video gönderin<br>→ <strong>/donebundle</strong> ile tamamlayın';
-}
-async function blAssign(bid){
-    var sel=document.getElementById('bla-'+bid);
-    if(!sel||!sel.value){toast('Video seçin!',true);return;}
-    var r=await api('/bundle/'+bid+'/assign','POST',{video_id:parseInt(sel.value)});
-    toast(r.success?'✅ Taşındı!':'❌ '+(r.error||''),!r.success);
-    if(r.success)loadBundleLib();
-}
-async function blDel(bid){
-    var r=await api('/bundle/'+bid,'DELETE');
-    toast(r.success?'✅ Silindi!':'❌ Hata',!r.success);
-    if(r.success){_blItems=_blItems.filter(function(it){return it.id!==bid;});renderBundleLib();}
-}
-/* ===== /BUNDLE LIBRARY ===== */
+function blShowCmd(){var sel=document.getElementById('bl-vid-sel');var box=document.getElementById('bl-cmd-box');if(!sel.value){toast('Video seçin!',true);return;}box.style.display='block';box.innerHTML='📋 Bot\'a yazın:<br><strong>/bundle '+sel.value+'</strong><br>→ Resim/video gönderin<br>→ <strong>/donebundle</strong> ile tamamlayın';}
+async function blAssign(bid){var sel=document.getElementById('bla-'+bid);if(!sel||!sel.value){toast('Video seçin!',true);return;}var r=await api('/bundle/'+bid+'/assign','POST',{video_id:parseInt(sel.value)});toast(r.success?'✅ Taşındı!':'❌ '+(r.error||''),!r.success);if(r.success)loadBundleLib();}
+async function blDel(bid){var r=await api('/bundle/'+bid,'DELETE');toast(r.success?'✅ Silindi!':'❌ Hata',!r.success);if(r.success){_blItems=_blItems.filter(it=>it.id!==bid);renderBundleLib();}}
 
 var _bundleVideoId=null;
 async function openBundle(vid,title){
-    _bundleVideoId=vid;
-    document.getElementById('bundle-title').textContent='📦 Bundle: '+title;
-    document.getElementById('bundle-sub').textContent='#'+vid;
+    _bundleVideoId=vid;document.getElementById('bundle-title').textContent='📦 Bundle: '+title;document.getElementById('bundle-sub').textContent='#'+vid;
     document.getElementById('bundle-cmd-box').innerHTML='Bot\'a yaz: <strong>/bundle '+vid+'</strong> → sonra resim/video gönder → <strong>/donebundle</strong> ile bitir';
-    document.getElementById('bov').classList.add('show');
-    await refreshBundleItems();
+    document.getElementById('bov').classList.add('show');await refreshBundleItems();
 }
 function closeBundle(){document.getElementById('bov').classList.remove('show');_bundleVideoId=null;}
 function closeBundleIfBg(e){if(e.target===document.getElementById('bov'))closeBundle();}
 async function refreshBundleItems(){
-    if(!_bundleVideoId)return;
-    var d=await api('/videos/'+_bundleVideoId+'/bundle');
-    var el=document.getElementById('bundle-items-list');
-    var btn=document.getElementById('bundle-clear-btn');
-    if(!d.items||!d.items.length){
-        el.innerHTML='<div style="text-align:center;padding:20px;color:rgba(255,255,255,.3);font-size:13px">📭 Bundle boş<br><small>Bot\'a /bundle '+_bundleVideoId+' yaz, sonra resim/video gönder</small></div>';
-        btn.style.display='none';return;
-    }
+    if(!_bundleVideoId)return;var d=await api('/videos/'+_bundleVideoId+'/bundle');
+    var el=document.getElementById('bundle-items-list');var btn=document.getElementById('bundle-clear-btn');
+    if(!d.items||!d.items.length){el.innerHTML='<div style="text-align:center;padding:20px;color:rgba(255,255,255,.3);font-size:13px">📭 Bundle boş<br><small>Bot\'a /bundle '+_bundleVideoId+' yaz, sonra resim/video gönder</small></div>';btn.style.display='none';return;}
     btn.style.display='';
-    el.innerHTML=d.items.map(function(item,i){
-        var ico=item.file_type==='photo'?'📸':'🎬';
-        var lbl=item.file_type==='photo'?'Resim':'Video';
-        return '<div class="bundle-item"><div class="bi-info"><span class="bi-type">'+ico+'</span><span>'+lbl+' #'+(i+1)+'</span></div><button class="btn btn-d" style="flex:none;padding:5px 10px;font-size:11px" onclick="delBundleItem('+item.id+')">🗑️</button></div>';
-    }).join('');
+    el.innerHTML=d.items.map(function(item,i){var ico=item.file_type==='photo'?'📸':'🎬';var lbl=item.file_type==='photo'?'Resim':'Video';return '<div class="bundle-item"><div style="display:flex;align-items:center;gap:7px"><span style="font-size:18px">'+ico+'</span><span>'+lbl+' #'+(i+1)+'</span></div><button class="btn btn-d" style="flex:none;padding:5px 10px;font-size:11px" onclick="delBundleItem('+item.id+')">🗑️</button></div>';}).join('');
 }
-async function delBundleItem(bid){
-    var r=await api('/bundle/'+bid,'DELETE');
-    if(r.success){toast('✅ Silindi!');await refreshBundleItems();}
-    else toast('❌ Hata',true);
-}
-async function clearBundle(){
-    if(!_bundleVideoId)return;
-    confirm2('Bundle Temizle','Tüm bundle öğeleri silinecek?',async function(){
-        var r=await fetch('/api/videos/'+_bundleVideoId+'/bundle/clear',{method:'DELETE'});
-        var d=await r.json();
-        if(d.success){toast('✅ Bundle temizlendi!');await refreshBundleItems();}
-        else toast('❌ Hata',true);
-    });
-}
-
-// CATEGORIES
-async function loadParentOptions(){
-    var d=await api('/categories');
-    document.getElementById('nc-parent').innerHTML='<option value="">— Ana Kategori —</option>'+d.categories.filter(function(c){return !c.parent_id;}).map(function(c){return '<option value="'+c.id+'">'+c.emoji+' '+c.label+'</option>';}).join('');
-}
-async function loadCats(){
-    document.getElementById('cats-list').innerHTML='<div class="loading">⏳</div>';
-    var d=await api('/categories');
-    if(!d.categories||!d.categories.length){document.getElementById('cats-list').innerHTML='<div class="empty"><div class="ei">📂</div><p>Kategori yok</p></div>';return;}
-    var top=d.categories.filter(function(c){return !c.parent_id;});
-    var subs=d.categories.filter(function(c){return c.parent_id;});
-    var html='';
-    top.forEach(function(cat){html+=renderCat(cat,false);subs.filter(function(s){return s.parent_id===cat.id;}).forEach(function(sub){html+=renderCat(sub,true);});});
-    document.getElementById('cats-list').innerHTML=html;
-}
-function renderCat(cat,isSub){
-    return '<div class="cat-item'+(isSub?' sub':'')+'" id="catcard-'+cat.id+'"><div class="cat-head"><div class="cat-emoji">'+cat.emoji+'</div><div class="cat-info"><div class="cn">'+cat.label+(isSub?' <span style="font-size:9px;color:#7c3aed;font-weight:700">ALT</span>':'')+'</div><div class="cs">'+cat.slug+'</div></div><div class="cat-cnt">'+cat.count+' video</div></div><div class="cat-acts"><button class="btn btn-i" style="flex:1" onclick="toggleCatEdit('+cat.id+')">✏️ Düzenle</button><button class="btn btn-d" style="flex:1" onclick="confDelCat('+cat.id+',\''+cat.label.replace(/'/g,"\\'")+'\')">🗑️ Sil</button></div><div class="cat-edit-form" id="cedit-'+cat.id+'"><div class="irow"><input class="inp" id="ce-emoji-'+cat.id+'" value="'+cat.emoji+'" placeholder="Emoji" style="max-width:55px;margin-bottom:0"><input class="inp" id="ce-label-'+cat.id+'" value="'+cat.label+'" placeholder="Görünen Ad" style="margin-bottom:0"></div><button class="btn btn-s" style="width:100%;margin-top:5px" onclick="saveEditCat('+cat.id+')">💾 Kaydet</button></div></div>';
-}
-function toggleCatEdit(id){document.getElementById('cedit-'+id).classList.toggle('open');}
-async function saveEditCat(id){
-    var label=document.getElementById('ce-label-'+id).value.trim(),emoji=document.getElementById('ce-emoji-'+id).value.trim();
-    if(!label){toast('Ad boş!',true);return;}
-    var r=await api('/categories/'+id,'PUT',{label:label,emoji:emoji});
-    toast(r.success?'✅ Güncellendi!':'❌ '+(r.error||''),!r.success);
-    if(r.success){loadCats();loadParentOptions();}
-}
-async function addCategory(){
-    var slug=document.getElementById('nc-slug').value.trim(),label=document.getElementById('nc-label').value.trim(),emoji=document.getElementById('nc-emoji').value.trim()||'📁',pid=document.getElementById('nc-parent').value||null;
-    if(!slug||!label){toast('Slug ve ad gerekli!',true);return;}
-    var r=await api('/categories','POST',{slug:slug,label:label,emoji:emoji,parent_id:pid?+pid:null});
-    toast(r.success?'✅ Eklendi!':'❌ '+(r.error||''),!r.success);
-    if(r.success){['nc-slug','nc-label'].forEach(function(id){document.getElementById(id).value='';});document.getElementById('nc-emoji').value='📁';loadStats();loadCats();loadParentOptions();}
-}
-function confDelCat(id,label){confirm2('Kategori Sil','"'+label+'" silinecek?',async function(){var r=await api('/categories/'+id,'DELETE');toast(r.success?'✅ Silindi!':'❌ '+(r.error||''),!r.success);if(r.success){loadStats();loadCats();loadParentOptions();}});}
+async function delBundleItem(bid){var r=await api('/bundle/'+bid,'DELETE');if(r.success){toast('✅ Silindi!');await refreshBundleItems();}else toast('❌ Hata',true);}
+async function clearBundle(){if(!_bundleVideoId)return;confirm2('Bundle Temizle','Tüm bundle öğeleri silinecek?',async function(){var r=await fetch('/api/videos/'+_bundleVideoId+'/bundle/clear',{method:'DELETE'});var d=await r.json();if(d.success){toast('✅ Bundle temizlendi!');await refreshBundleItems();}else toast('❌ Hata',true);});}
 
 // PACKAGES
 async function loadPackages(){
@@ -700,116 +560,69 @@ async function loadPackages(){
     var d=await api('/packages');
     if(!d.packages||!d.packages.length){document.getElementById('packages-list').innerHTML='<div class="empty"><div class="ei">📦</div><p>Paket yok</p></div>';return;}
     document.getElementById('packages-list').innerHTML=d.packages.map(function(p){
-        return '<div class="pkg-card" id="pkg-'+p.id+'"><div class="pkg-head"><div class="pkg-stars">⭐ '+p.stars+'</div><div class="pkg-info"><div class="pn">'+p.name+'</div><div class="pd">'+p.days+' gün · Günlük '+(p.stars/p.days).toFixed(1)+' ⭐</div></div><span class="badge '+(p.active?'bg':'br')+'">'+(p.active?'Aktif':'Pasif')+'</span></div><div class="pkg-acts"><button class="btn btn-i" style="flex:1" onclick="togglePkgEdit('+p.id+')">✏️ Düzenle</button><button class="btn '+(p.active?'btn-w':'btn-s')+'" style="flex:1" onclick="togglePkgActive('+p.id+','+(p.active?'true':'false')+',\''+p.name.replace(/'/g,"\\'")+'\','+p.stars+','+p.days+')">'+(p.active?'⏸ Pasifleştir':'▶ Aktifleştir')+'</button><button class="btn btn-d" onclick="confDelPkg('+p.id+',\''+p.name.replace(/'/g,"\\'")+'\')">🗑️</button></div><div class="pkg-edit-form" id="pedit-'+p.id+'"><input class="inp" id="pe-name-'+p.id+'" value="'+p.name+'" placeholder="Paket Adı"><div class="irow"><input class="inp" type="number" id="pe-stars-'+p.id+'" value="'+p.stars+'" placeholder="Stars"><input class="inp" type="number" id="pe-days-'+p.id+'" value="'+p.days+'" placeholder="Gün"></div><button class="btn btn-s" style="width:100%" onclick="savePkg('+p.id+')">💾 Kaydet</button></div></div>';
+        return '<div class="pkg-card" id="pkg-'+p.id+'"><div class="pkg-head"><div class="pkg-stars">⭐ '+p.stars+'</div><div class="pkg-info"><div class="pn">'+esc2(p.name)+'</div><div class="pd">'+p.days+' gün · Günlük '+(p.stars/p.days).toFixed(1)+' ⭐</div></div><span class="badge '+(p.active?'bg':'br')+'">'+(p.active?'Aktif':'Pasif')+'</span></div><div class="pkg-acts"><button class="btn btn-i" style="flex:1" onclick="togglePkgEdit('+p.id+')">✏️ Düzenle</button><button class="btn '+(p.active?'btn-w':'btn-s')+'" style="flex:1" onclick="togglePkgActive('+p.id+','+(p.active?'true':'false')+',\''+p.name.replace(/'/g,"\\'")+'\','+p.stars+','+p.days+')">'+(p.active?'⏸ Pasifleştir':'▶ Aktifleştir')+'</button><button class="btn btn-d" onclick="confDelPkg('+p.id+',\''+p.name.replace(/'/g,"\\'")+'\')">🗑️</button></div><div class="pkg-edit-form" id="pedit-'+p.id+'"><input class="inp" id="pe-name-'+p.id+'" value="'+esc2(p.name)+'" placeholder="Paket Adı"><div class="irow"><input class="inp" type="number" id="pe-stars-'+p.id+'" value="'+p.stars+'" placeholder="Stars"><input class="inp" type="number" id="pe-days-'+p.id+'" value="'+p.days+'" placeholder="Gün"></div><button class="btn btn-s" style="width:100%" onclick="savePkg('+p.id+')">💾 Kaydet</button></div></div>';
     }).join('');
 }
 function togglePkgEdit(id){document.getElementById('pedit-'+id).classList.toggle('open');}
-async function savePkg(id){
-    var name=document.getElementById('pe-name-'+id).value.trim(),stars=+document.getElementById('pe-stars-'+id).value,days=+document.getElementById('pe-days-'+id).value;
-    if(!name||!stars||!days){toast('Tüm alanları doldurun!',true);return;}
-    var r=await api('/packages/'+id,'PUT',{name:name,stars:stars,days:days,active:true});
-    toast(r.success?'✅ Güncellendi!':'❌ '+(r.error||''),!r.success);
-    if(r.success)loadPackages();
-}
-async function togglePkgActive(id,current,name,stars,days){
-    var r=await api('/packages/'+id,'PUT',{name:name,stars:stars,days:days,active:!current});
-    toast(r.success?'✅ '+(current?'Pasifleştirildi':'Aktifleştirildi')+'!':'❌ '+(r.error||''),!r.success);
-    if(r.success)loadPackages();
-}
-async function addPackage(){
-    var name=document.getElementById('np-name').value.trim(),stars=+document.getElementById('np-stars').value,days=+document.getElementById('np-days').value;
-    if(!name||!stars||!days){toast('Tüm alanları doldurun!',true);return;}
-    var r=await api('/packages','POST',{name:name,stars:stars,days:days});
-    toast(r.success?'✅ Paket eklendi!':'❌ '+(r.error||''),!r.success);
-    if(r.success){['np-name','np-stars','np-days'].forEach(function(id){document.getElementById(id).value='';});loadPackages();}
-}
+async function savePkg(id){var name=document.getElementById('pe-name-'+id).value.trim(),stars=+document.getElementById('pe-stars-'+id).value,days=+document.getElementById('pe-days-'+id).value;if(!name||!stars||!days){toast('Tüm alanları doldurun!',true);return;}var r=await api('/packages/'+id,'PUT',{name:name,stars:stars,days:days,active:true});toast(r.success?'✅ Güncellendi!':'❌ '+(r.error||''),!r.success);if(r.success)loadPackages();}
+async function togglePkgActive(id,current,name,stars,days){var r=await api('/packages/'+id,'PUT',{name:name,stars:stars,days:days,active:!current});toast(r.success?'✅ '+(current?'Pasifleştirildi':'Aktifleştirildi')+'!':'❌ '+(r.error||''),!r.success);if(r.success)loadPackages();}
+async function addPackage(){var name=document.getElementById('np-name').value.trim(),stars=+document.getElementById('np-stars').value,days=+document.getElementById('np-days').value;if(!name||!stars||!days){toast('Tüm alanları doldurun!',true);return;}var r=await api('/packages','POST',{name:name,stars:stars,days:days});toast(r.success?'✅ Paket eklendi!':'❌ '+(r.error||''),!r.success);if(r.success){['np-name','np-stars','np-days'].forEach(id=>{document.getElementById(id).value='';});loadPackages();}}
 function confDelPkg(id,name){confirm2('Paket Sil','"'+name+'" silinecek?',async function(){var r=await api('/packages/'+id,'DELETE');toast(r.success?'✅ Silindi!':'❌ '+(r.error||''),!r.success);if(r.success)loadPackages();});}
 
 // CHANNEL
-async function loadChannel(){
-    var d=await api('/channel');
-    document.getElementById('ch-id').value=d.channel_id||'';
-    document.getElementById('ch-status').textContent=d.set?'✅ Aktif: '+d.channel_id:'⚠️ Henüz ayarlanmamış';
-}
-async function saveChannel(){
-    var chId=document.getElementById('ch-id').value.trim();
-    if(!chId){toast('Kanal ID girin!',true);return;}
-    var r=await api('/channel','POST',{channel_id:chId});
-    toast(r.success?'✅ Kanal ayarlandı!':'❌ '+(r.error||''),!r.success);
-    if(r.success)loadChannel();
-}
-async function loadUncategorizedVideos(){
-    document.getElementById('uncat-videos').innerHTML='<div class="loading">⏳</div>';
-    var d=await api('/videos/uncategorized');
-    if(!d.videos||!d.videos.length){document.getElementById('uncat-videos').innerHTML='<div class="empty"><div class="ei">📁</div><p>Kategorisiz video yok</p></div>';return;}
-    var cats=await api('/categories');
-    var catOptions=buildGroupedCatOptions(cats.categories,'Kategori seçin');
-    document.getElementById('uncat-videos').innerHTML=d.videos.map(function(v){
+async function loadChannel(){var d=await api('/channel');document.getElementById('ch-id').value=d.channel_id||'';document.getElementById('ch-status').textContent=d.set?'✅ Aktif: '+d.channel_id:'⚠️ Henüz ayarlanmamış';}
+async function saveChannel(){var chId=document.getElementById('ch-id').value.trim();if(!chId){toast('Kanal ID girin!',true);return;}var r=await api('/channel','POST',{channel_id:chId});toast(r.success?'✅ Kanal ayarlandı!':'❌ '+(r.error||''),!r.success);if(r.success)loadChannel();}
+async function loadUntaggedVideos(){
+    document.getElementById('untagged-videos').innerHTML='<div class="loading">⏳</div>';
+    var d=await api('/videos/untagged');var dt=await api('/tags');var tags=dt.tags||[];
+    if(!d.videos||!d.videos.length){document.getElementById('untagged-videos').innerHTML='<div class="empty"><div class="ei">🏷️</div><p>Etiketsiz video yok</p></div>';return;}
+    document.getElementById('untagged-videos').innerHTML=d.videos.map(function(v){
         var safeTitle=(v.title||'Video #'+v.id).replace(/'/g,"\\'");
-        return '<div class="card" id="uncat-'+v.id+'"><div class="cb"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px"><div><div class="ct" id="uncat-title-txt-'+v.id+'">'+(v.title||'Video #'+v.id)+'</div><div class="uid">#'+v.id+' | msg:'+(v.message_id||'-')+'</div></div></div><input class="inp" id="uncat-title-'+v.id+'" placeholder="Yeni baslik..." value="'+safeTitle+'" style="margin-bottom:7px"><select class="inp" id="uncat-cat-'+v.id+'" style="margin-bottom:7px">'+catOptions+'</select><div class="btn-row"><button class="btn" style="background:#0ea5e9;color:#fff" onclick="saveTitle('+v.id+')">📝 Başlık</button><button class="btn btn-s" style="flex:1" onclick="categorizeVideo('+v.id+')">✅ Kategori Ata</button><button class="btn btn-d" onclick="confDelUncat('+v.id+',\''+safeTitle+'\')">🗑️ Sil</button></div></div></div>';
+        var tagCheckboxes=tags.map(t=>'<label class="tag-check-lbl" onclick="this.classList.toggle(\'selected\')"><input type="checkbox" value="'+t.id+'">'+(t.emoji||'🏷️')+' '+esc2(t.label)+'</label>').join('');
+        return '<div class="card" id="untagged-'+v.id+'"><div class="cb">'
+            +'<div class="ct" id="untagged-title-txt-'+v.id+'">'+(v.title||'Video #'+v.id)+'</div>'
+            +'<div class="uid">#'+v.id+' | msg:'+(v.message_id||'-')+'</div>'
+            +'<input class="inp" id="untagged-title-'+v.id+'" placeholder="Yeni başlık..." value="'+safeTitle+'" style="margin-top:7px">'
+            +'<div style="font-size:10px;color:rgba(255,255,255,.35);margin-bottom:5px">Etiket seç:</div>'
+            +'<div id="untag-checks-'+v.id+'" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px">'+tagCheckboxes+'</div>'
+            +'<div class="btn-row">'
+            +'<button class="btn" style="background:#0ea5e9;color:#fff" onclick="saveUncatTitle('+v.id+')">📝 Başlık</button>'
+            +'<button class="btn btn-s" style="flex:1" onclick="tagUntaggedVideo('+v.id+')">🏷️ Etiket Ata</button>'
+            +'<button class="btn btn-d" onclick="confDelUncat('+v.id+',\''+safeTitle+'\')">🗑️ Sil</button>'
+            +'</div></div></div>';
     }).join('');
 }
-async function categorizeVideo(id){
-    var cat=document.getElementById('uncat-cat-'+id).value;
-    if(!cat){toast('Kategori seçin!',true);return;}
-    var r=await api('/videos/'+id+'/categorize','POST',{category:cat});
-    toast(r.success?'✅ Kategori atandı!':'❌ '+(r.error||''),!r.success);
-    if(r.success){
-        var el=document.getElementById('uncat-'+id);
-        if(el)el.style.opacity='0';setTimeout(function(){loadUncategorizedVideos();},250);
-        loadStats();loadVideos();
-    }
+async function tagUntaggedVideo(id){
+    var checkedIds=Array.from(document.querySelectorAll('#untag-checks-'+id+' input:checked')).map(i=>parseInt(i.value));
+    if(!checkedIds.length){toast('En az bir etiket seçin!',true);return;}
+    var r=await api('/videos/'+id+'/set-tags','POST',{tag_ids:checkedIds});
+    toast(r.success?'✅ Etiketler atandı!':'❌ '+(r.error||''),!r.success);
+    if(r.success){var el=document.getElementById('untagged-'+id);if(el){el.style.opacity='0';}setTimeout(()=>{loadUntaggedVideos();},250);loadStats();}
 }
-async function saveTitle(id){
-    var t=document.getElementById('uncat-title-'+id).value.trim();
-    if(!t){toast('Baslik girin!',true);return;}
-    var r=await api('/videos/'+id+'/title','POST',{title:t});
-    toast(r.success?'✅ Baslik kaydedildi!':'❌ '+(r.error||''),!r.success);
-    if(r.success){
-        document.getElementById('uncat-title-txt-'+id).textContent=t;
-        loadVideos();
-    }
-}
-function confDelUncat(id,title){confirm2('Video Sil','"'+title+'" silinecek?',async function(){var r=await api('/videos/'+id,'DELETE');toast(r.success?'✅ Silindi!':'❌ '+(r.error||''),!r.success);if(r.success){loadUncategorizedVideos();loadStats();}});}
+async function saveUncatTitle(id){var t=document.getElementById('untagged-title-'+id).value.trim();if(!t){toast('Başlık girin!',true);return;}var r=await api('/videos/'+id+'/title','POST',{title:t});toast(r.success?'✅ Başlık kaydedildi!':'❌ '+(r.error||''),!r.success);if(r.success){document.getElementById('untagged-title-txt-'+id).textContent=t;loadVideos();}}
+function confDelUncat(id,title){confirm2('Video Sil','"'+title+'" silinecek?',async function(){var r=await api('/videos/'+id,'DELETE');toast(r.success?'✅ Silindi!':'❌ '+(r.error||''),!r.success);if(r.success){loadUntaggedVideos();loadStats();}});}
 
 // STATS VIEW
 async function loadStatsView(){
     document.getElementById('stats-content').innerHTML='<div class="loading">⏳</div>';
-    var d=await api('/stats');
-    var v=d.views||{};
-    var html='<div class="stats-grid" style="padding:0;margin-bottom:14px"><div class="stat-card"><div class="big-num">'+(v.total_views||0)+'</div><div class="big-label">Toplam İzlenme</div></div><div class="stat-card"><div class="big-num">'+(v.unique_viewers||0)+'</div><div class="big-label">Tekil Görüntüleyici</div></div><div class="stat-card"><div class="big-num">'+(d.total_videos||0)+'</div><div class="big-label">Toplam Video</div></div><div class="stat-card"><div class="big-num">'+(d.premium_users||0)+'</div><div class="big-label">Aktif Premium</div></div></div>';
-
+    var d=await api('/stats');var v=d.views||{};
+    var html='<div class="stats-grid" style="padding:0;margin-bottom:14px">'
+        +'<div class="stat-card"><div style="font-size:28px;font-weight:800;color:#7c3aed">'+(v.total_views||0)+'</div><div style="font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Toplam İzlenme</div></div>'
+        +'<div class="stat-card"><div style="font-size:28px;font-weight:800;color:#7c3aed">'+(v.unique_viewers||0)+'</div><div style="font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Tekil İzleyici</div></div>'
+        +'<div class="stat-card"><div style="font-size:28px;font-weight:800;color:#7c3aed">'+(d.total_videos||0)+'</div><div style="font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Toplam Video</div></div>'
+        +'<div class="stat-card"><div style="font-size:28px;font-weight:800;color:#7c3aed">'+(d.premium_users||0)+'</div><div style="font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Aktif Premium</div></div>'
+        +'</div>';
     if(v.daily&&v.daily.length){
-        var max=Math.max.apply(null,v.daily.map(function(x){return x[1];}));
+        var max=Math.max(...v.daily.map(x=>x[1]));
         html+='<div class="sec">📈 Son 7 Gün</div>';
-        v.daily.forEach(function(item){
-            var day=item[0],count=item[1];
-            var pct=max?Math.round((count/max)*100):0;
-            html+='<div class="chart-bar"><div class="chart-label">'+day.slice(5)+'</div><div class="chart-fill" style="width:'+pct+'%"></div><div class="chart-val">'+count+'</div></div>';
-        });
+        v.daily.forEach(item=>{var day=item[0],count=item[1];var pct=max?Math.round((count/max)*100):0;html+='<div class="chart-bar"><div class="chart-label">'+day.slice(5)+'</div><div class="chart-fill" style="width:'+pct+'%"></div><div class="chart-val">'+count+'</div></div>';});
         html+='<div class="divider"></div>';
     }
-
     if(v.top_videos&&v.top_videos.length){
         html+='<div class="sec">🏆 En Çok İzlenen Videolar</div>';
-        v.top_videos.forEach(function(item,i){
-            var vid=item[0],count=item[1];
-            html+='<div class="top-item"><div class="top-rank">'+(i+1)+'</div><div class="top-info"><div class="top-title">Video #'+vid+'</div><div class="top-meta">'+count+' izlenme</div></div></div>';
-        });
-        html+='<div class="divider"></div>';
+        v.top_videos.forEach((item,i)=>{var vid=item[0],count=item[1];html+='<div style="background:rgba(255,255,255,.04);border-radius:10px;padding:10px;display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="width:28px;height:28px;border-radius:8px;background:rgba(124,58,237,.15);color:#9f67fa;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800">'+(i+1)+'</div><div style="flex:1"><div style="font-size:13px;font-weight:700">Video #'+vid+'</div><div style="font-size:10px;color:rgba(255,255,255,.4)">'+count+' izlenme</div></div></div>';});
     }
-
-    if(v.top_categories&&v.top_categories.length){
-        html+='<div class="sec">📂 En Popüler Kategoriler</div>';
-        var maxCat=Math.max.apply(null,v.top_categories.map(function(x){return x[1];}));
-        v.top_categories.forEach(function(item){
-            var cat=item[0],count=item[1];
-            var pct=maxCat?Math.round((count/maxCat)*100):0;
-            html+='<div class="chart-bar"><div class="chart-label">'+cat+'</div><div class="chart-fill" style="width:'+pct+'%"></div><div class="chart-val">'+count+'</div></div>';
-        });
-    }
-
-    if(!v.total_views) html+='<div class="empty"><div class="ei">📊</div><p>Henüz izlenme verisi yok</p></div>';
+    if(!v.total_views)html+='<div class="empty"><div class="ei">📊</div><p>Henüz izlenme verisi yok</p></div>';
     document.getElementById('stats-content').innerHTML=html;
 }
 
@@ -822,48 +635,16 @@ async function loadPayments(){
         return '<div class="card"><div class="cb"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px"><div><div class="ct">ID: '+p.user_id+'</div><div class="uid">'+p.date+' · '+(p.package_name||'Premium')+'</div><div class="uid">⭐ '+p.stars+' Stars · '+(p.days||30)+' Gün</div></div><span class="badge by">⏳ Bekliyor</span></div><div class="btn-row"><button class="btn btn-s" onclick="approveP('+p.user_id+')">✅ Onayla</button><button class="btn btn-d" onclick="rejectP('+p.user_id+')">❌ Reddet</button></div></div></div>';
     }).join('');
 }
-async function approveP(uid){
-    var r=await api('/payments/'+uid+'/approve','POST');
-    toast(r.success?'✅ Onaylandı!':'❌ '+(r.error||''),!r.success);
-    if(r.success){loadStats();loadPayments();}
-}
+async function approveP(uid){var r=await api('/payments/'+uid+'/approve','POST');toast(r.success?'✅ Onaylandı!':'❌ '+(r.error||''),!r.success);if(r.success){loadStats();loadPayments();}}
 function rejectP(uid){confirm2('Reddet',uid+' kullanıcısının talebini reddet?',async function(){var r=await api('/payments/'+uid+'/reject','POST');toast(r.success?'✅ Reddedildi!':'❌ '+(r.error||''),!r.success);if(r.success){loadStats();loadPayments();}});}
 
 // TOOLS
-async function broadcastMsg(){
-    var txt=document.getElementById('bc-text').value;
-    if(!txt.trim()){toast('Mesaj boş!',true);return;}
-    confirm2('Toplu Mesaj','Tüm aktif premium üyelere gönderilecek.',async function(){var r=await api('/broadcast','POST',{message:txt});toast(r.success?'✅ '+r.sent+' kişiye gönderildi!':'❌ '+(r.error||''),!r.success);if(r.success)document.getElementById('bc-text').value='';});
-}
-async function searchUser(){
-    var uid=document.getElementById('s-uid').value;
-    if(!uid){toast('ID girin!',true);return;}
-    var r=await api('/users/'+uid);
-    document.getElementById('search-res').innerHTML=r.found
-        ?'<div style="background:rgba(255,255,255,.05);border-radius:8px;padding:10px;margin-top:7px"><div style="font-size:12px">🆔 <strong>'+r.user.user_id+'</strong></div><div class="uid" style="margin:3px 0">Premium: '+(r.user.premium_date||'Yok')+'</div><span class="badge '+(r.user.active?'bg':'br')+'">'+(r.user.active?'✅ Aktif':'❌ Aktif Değil')+'</span></div>'
-        :'<div style="font-size:12px;color:rgba(255,255,255,.3);margin-top:7px">❌ Bulunamadı</div>';
-}
-async function cleanExpired(){
-    var r=await api('/clean-expired','POST');
-    toast(r.success?'✅ '+(r.cleaned||0)+' kayıt temizlendi!':'❌ Hata',!r.success);
-    if(r.success)loadStats();
-}
-function refreshAll(){
-    loadStats();
-    var a=document.querySelector('.tab-content.active');
-    a=a&&a.id?a.id.replace('tab-',''):'';
-    if(a==='users')loadUsers();
-    if(a==='videos')loadVideos();
-    if(a==='cats')loadCats();
-    if(a==='packages')loadPackages();
-    if(a==='channel')loadChannel();
-    if(a==='stats')loadStatsView();
-    if(a==='payments')loadPayments();
-    toast('🔄 Yenilendi!');
-}
+async function broadcastMsg(){var txt=document.getElementById('bc-text').value;if(!txt.trim()){toast('Mesaj boş!',true);return;}confirm2('Toplu Mesaj','Tüm aktif premium üyelere gönderilecek.',async function(){var r=await api('/broadcast','POST',{message:txt});toast(r.success?'✅ '+r.sent+' kişiye gönderildi!':'❌ '+(r.error||''),!r.success);if(r.success)document.getElementById('bc-text').value='';});}
+async function searchUser(){var uid=document.getElementById('s-uid').value;if(!uid){toast('ID girin!',true);return;}var r=await api('/users/'+uid);document.getElementById('search-res').innerHTML=r.found?'<div style="background:rgba(255,255,255,.05);border-radius:8px;padding:10px;margin-top:7px"><div style="font-size:12px">🆔 <strong>'+r.user.user_id+'</strong></div><div class="uid" style="margin:3px 0">Premium: '+(r.user.premium_date||'Yok')+'</div><span class="badge '+(r.user.active?'bg':'br')+'">'+(r.user.active?'✅ Aktif':'❌ Aktif Değil')+'</span></div>':'<div style="font-size:12px;color:rgba(255,255,255,.3);margin-top:7px">❌ Bulunamadı</div>';}
+async function cleanExpired(){var r=await api('/clean-expired','POST');toast(r.success?'✅ '+(r.cleaned||0)+' kayıt temizlendi!':'❌ Hata',!r.success);if(r.success)loadStats();}
+function refreshAll(){loadStats();var a=document.querySelector('.tab-content.active');a=a&&a.id?a.id.replace('tab-',''):'';if(a==='users')loadUsers();if(a==='videos')loadVideos();if(a==='tags')loadTags();if(a==='packages')loadPackages();if(a==='channel'){loadChannel();loadUntaggedVideos();}if(a==='stats')loadStatsView();if(a==='payments')loadPayments();toast('🔄 Yenilendi!');}
 
-loadStats();
-loadUsers();
+loadStats();loadUsers();
 </script>
 </body>
 </html>

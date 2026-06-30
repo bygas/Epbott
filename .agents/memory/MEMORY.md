@@ -1,0 +1,1 @@
+- [Tag system migration](tag-system.md) — replaced category system with tags (many-to-many); key schema, API, and bot callback patterns documented
