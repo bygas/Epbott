@@ -1852,7 +1852,8 @@ def start(update, context):
             f"*{BOT_NAME}*'e katıldın — Telegram'ın en özel içerikleri burada.\n\n"
             f"🎁 *{FREE_DAYS} gün ücretsiz premium* hediye!\n"
             f"Aşağıdaki butonlardan içeriklere göz at.\n\n"
-            f"⚠️ Bu bot yalnızca *18+* kullanıcılara yöneliktir."
+            f"⚠️ Bu bot yalnızca *18+* kullanıcılara yöneliktir.\n"
+            f"⚠️ Tamamen gizli ve güvenli. Artık Vpn'e, yakalanmaya ve sıkıcı reklamlara yer yok"
         )
     elif prem:
         rem = days_remaining(uid)
@@ -1869,7 +1870,8 @@ def start(update, context):
             f"⚡ Ödeme yapar yapmaz anında aktif\n"
             f"🛡️ İndirme korumalı — tamamen gizli\n\n"
             f"⭐ Premium al, şimdi erişim kazan.\n\n"
-            f"⚠️ *18+ içeriktir.* Devam ederek yetişkin olduğunu onaylıyorsun."
+            f"⚠️ *18+ içeriktir.* Devam ederek yetişkin olduğunu onaylıyorsun.\n"
+            f"⚠️ Tamamen gizli ve güvenli. Artık Vpn'e, yakalanmaya ve sıkıcı reklamlara yer yok"
         )
     update.message.reply_text(t, parse_mode='Markdown', reply_markup=main_menu_kb(uid))
 
