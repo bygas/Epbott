@@ -2107,7 +2107,7 @@ def video_yukle(update, context):
         c.execute("SELECT slug, label, emoji FROM tags ORDER BY label")
         tags = c.fetchall()
         tag_list = "\n".join([f"  {r[2] or '🏷️'} {r[0]} → {r[1]}" for r in tags]) or "  (Kategori yok)"
-        return update.message.reply_text(f"❌ Kullanım: /yukle <başlık>\n\nEtiket seçmeden yüklemek için sadece başlık yazın.\nMevcut etiketler:\n{tag_list}")
+        return update.message.reply_text(f"❌ Kullanım: /yukle <başlık>\n\nKategori seçmeden yüklemek için sadece başlık yazın.\nMevcut kategoriler:\n{tag_list}")
     title = ' '.join(args)
     context.user_data['yukle'] = {'title': title}
     update.message.reply_text(f"📤 *{title}* videosunu gönderin.\n\n_Not: Kategori atamak için admin panelini kullanın._", parse_mode='Markdown')
