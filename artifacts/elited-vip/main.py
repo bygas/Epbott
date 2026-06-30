@@ -1986,7 +1986,7 @@ def handle_video(update, context):
         else:
             c.execute("INSERT INTO videos (file_id,title,thumb_file_id) VALUES (%s,%s,%s) RETURNING id", (fid, title, tid_thumb))
             new_vid_id = c.fetchone()[0]
-        # Etiketleri ata
+        # Kategorileri ata
         if new_vid_id and tag_ids_str:
             for tid_str in tag_ids_str.split(','):
                 try:
@@ -1995,8 +1995,8 @@ def handle_video(update, context):
                     pass
         c.execute("DELETE FROM pending_video_uploads WHERE admin_id=%s", (ADMIN_ID,))
         conn.commit()
-        tag_line = tag_ids_str if tag_ids_str else 'Etiketsiz'
-        update.message.reply_text(f"✅ Video eklendi!\n🏷️ Etiketler: {tag_line}\n🎬 {title}")
+        tag_line = tag_ids_str if tag_ids_str else 'Kategorisi'
+        update.message.reply_text(f"✅ Video eklendi!\n🏷️ Kategoriler: {tag_line}\n🎬 {title}")
     elif 'yukle' in context.user_data:
         data = context.user_data['yukle']
         fid = update.message.video.file_id
