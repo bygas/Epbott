@@ -110,7 +110,7 @@ select.inp option{background:#161630;color:#fff;}
 <div class="tabs">
     <div class="tab active" onclick="showTab('users')"><span class="ti">👥</span>Üyeler</div>
     <div class="tab" onclick="showTab('videos')"><span class="ti">🎬</span>Videolar</div>
-    <div class="tab" onclick="showTab('tags')"><span class="ti">🏷️</span>Etiketler</div>
+    <div class="tab" onclick="showTab('tags')"><span class="ti">🏷️</span>Kategoriler</div>
     <div class="tab" onclick="showTab('packages')"><span class="ti">📦</span>Paketler</div>
     <div class="tab" onclick="showTab('channel')"><span class="ti">📺</span>Kanal</div>
     <div class="tab" onclick="showTab('stats')"><span class="ti">📊</span>İstatistik</div>
@@ -148,9 +148,9 @@ select.inp option{background:#161630;color:#fff;}
 <div id="tab-videos" class="tab-content">
     <div class="sec">📤 Panel'den Video Ekle</div>
     <div class="card"><div class="cb">
-        <div class="cm">Etiket seç, başlık gir → Hazırla → Bota videoyu gönder</div>
+        <div class="cm">Kategori seç, başlık gir → Hazırla → Bota videoyu gönder</div>
         <input class="inp" id="v-title" placeholder="Video Başlığı">
-        <div class="sec" style="margin-bottom:5px">Etiketler (birden fazla seçilebilir)</div>
+        <div class="sec" style="margin-bottom:5px">Kategoriler (birden fazla seçilebilir)</div>
         <div class="tag-checks" id="v-tag-checks"><div class="loading" style="padding:8px">⏳ Yükleniyor...</div></div>
         <button class="btn btn-p" style="width:100%" onclick="prepareUpload()">📤 Hazırla & Bota Bildir</button>
         <div id="upload-status" style="margin-top:7px;font-size:12px;display:none"></div>
@@ -162,14 +162,14 @@ select.inp option{background:#161630;color:#fff;}
 
 <!-- TAGS -->
 <div id="tab-tags" class="tab-content">
-    <div class="sec">Yeni Etiket Ekle</div>
+    <div class="sec">Yeni Kategori Ekle</div>
     <div class="card"><div class="cb">
         <div class="irow"><input class="inp" id="nt-emoji" placeholder="Emoji" style="max-width:62px" value="🏷️"><input class="inp" id="nt-slug" placeholder="slug (örn: aksiyon)"></div>
         <input class="inp" id="nt-label" placeholder="Görünen ad (örn: Aksiyon)">
-        <button class="btn btn-p" style="width:100%" onclick="addTag()">➕ Etiket Ekle</button>
+        <button class="btn btn-p" style="width:100%" onclick="addTag()">➕ Kategori Ekle</button>
     </div></div>
     <div class="divider"></div>
-    <div class="sec">Mevcut Etiketler</div>
+    <div class="sec">Mevcut Kategoriler</div>
     <div id="tags-list"><div class="loading">⏳</div></div>
 </div>
 
@@ -196,13 +196,13 @@ select.inp option{background:#161630;color:#fff;}
         <div id="ch-status" style="margin-top:8px;font-size:12px;color:rgba(255,255,255,.4)"></div>
     </div></div>
     <div class="divider"></div>
-    <div class="sec">🏷️ Etiketsiz Videolar</div>
-    <div class="cm" style="margin-bottom:10px">Kanaldan yakalanan ama henüz etiketi atanmamış videolar</div>
+    <div class="sec">🏷️ Kategorisiz Videolar</div>
+    <div class="cm" style="margin-bottom:10px">Kanaldan yakalanan ama henüz kategorii atanmamış videolar</div>
     <div id="untagged-videos"><div class="loading">⏳</div></div>
     <div class="divider"></div>
     <div class="sec">Yardım</div>
     <div class="card"><div class="cb" style="font-size:12px;color:rgba(255,255,255,.45);line-height:1.6">
-        1️⃣ Kanal oluşturun<br>2️⃣ Botu kanala admin olarak ekleyin<br>3️⃣ Yukarıdaki ID'yi kaydedin<br>4️⃣ Videolar kanala yüklenince bot yakalar<br>5️⃣ Admin buradan etiket atayabilir
+        1️⃣ Kanal oluşturun<br>2️⃣ Botu kanala admin olarak ekleyin<br>3️⃣ Yukarıdaki ID'yi kaydedin<br>4️⃣ Videolar kanala yüklenince bot yakalar<br>5️⃣ Admin buradan kategori atayabilir
     </div></div>
 </div>
 
@@ -331,7 +331,7 @@ async function loadStats(){
             '<div class="stat-card"><div class="icon">👥</div><div class="value">'+d.total_users+'</div><div class="label">Toplam Üye</div></div>'
             +'<div class="stat-card"><div class="icon">⭐</div><div class="value">'+d.premium_users+'</div><div class="label">Premium</div></div>'
             +'<div class="stat-card"><div class="icon">🎬</div><div class="value">'+d.total_videos+'</div><div class="label">Video</div></div>'
-            +'<div class="stat-card"><div class="icon">🏷️</div><div class="value">'+(d.total_tags||0)+'</div><div class="label">Etiket</div></div>';
+            +'<div class="stat-card"><div class="icon">🏷️</div><div class="value">'+(d.total_tags||0)+'</div><div class="label">Kategori</div></div>';
     }catch(e){document.getElementById('stats-grid').innerHTML='<div class="loading">❌</div>';}
 }
 
@@ -393,7 +393,7 @@ var _allTagsData=[];
 async function loadTags(){
     document.getElementById('tags-list').innerHTML='<div class="loading">⏳</div>';
     var d=await api('/tags');_allTagsData=d.tags||[];
-    if(!_allTagsData.length){document.getElementById('tags-list').innerHTML='<div class="empty"><div class="ei">🏷️</div><p>Etiket yok</p></div>';return;}
+    if(!_allTagsData.length){document.getElementById('tags-list').innerHTML='<div class="empty"><div class="ei">🏷️</div><p>Kategori yok</p></div>';return;}
     document.getElementById('tags-list').innerHTML=_allTagsData.map(function(tag){
         return '<div class="tag-item" id="tagcard-'+tag.id+'"><div class="tag-head"><div class="tag-emoji">'+(tag.emoji||'🏷️')+'</div><div class="tag-info"><div class="tn">'+esc2(tag.label)+'</div><div class="ts">'+esc2(tag.slug)+'</div></div><div class="tag-cnt">'+tag.count+' video</div></div>'
             +'<div class="tag-acts"><button class="btn btn-i" style="flex:1" onclick="toggleTagEdit('+tag.id+')">✏️ Düzenle</button><button class="btn btn-d" style="flex:1" onclick="confDelTag('+tag.id+',\''+tag.label.replace(/'/g,"\\'") +'\')">🗑️ Sil</button></div>'
@@ -415,13 +415,13 @@ async function addTag(){
     toast(r.success?'✅ Eklendi!':'❌ '+(r.error||''),!r.success);
     if(r.success){['nt-slug','nt-label'].forEach(id=>{document.getElementById(id).value='';});document.getElementById('nt-emoji').value='🏷️';loadStats();loadTags();}
 }
-function confDelTag(id,label){confirm2('Etiket Sil','"'+label+'" silinecek?',async function(){var r=await api('/tags/'+id,'DELETE');toast(r.success?'✅ Silindi!':'❌ '+(r.error||''),!r.success);if(r.success){loadStats();loadTags();}});}
+function confDelTag(id,label){confirm2('Kategori Sil','"'+label+'" silinecek?',async function(){var r=await api('/tags/'+id,'DELETE');toast(r.success?'✅ Silindi!':'❌ '+(r.error||''),!r.success);if(r.success){loadStats();loadTags();}});}
 
 // VIDEOS
 async function loadTagCheckboxes(){
     var d=await api('/tags');var tags=d.tags||[];
     var el=document.getElementById('v-tag-checks');
-    if(!tags.length){el.innerHTML='<div style="font-size:12px;color:rgba(255,255,255,.3)">Henüz etiket yok. Önce Etiketler sekmesinden ekleyin.</div>';return;}
+    if(!tags.length){el.innerHTML='<div style="font-size:12px;color:rgba(255,255,255,.3)">Henüz kategori yok. Önce Kategoriler sekmesinden ekleyin.</div>';return;}
     el.innerHTML=tags.map(function(t){return '<label class="tag-check-lbl" id="tclbl-'+t.id+'" onclick="toggleTagCheck('+t.id+',this)"><input type="checkbox" value="'+t.id+'">'+(t.emoji||'🏷️')+' '+esc2(t.label)+'</label>';}).join('');
 }
 function toggleTagCheck(id,el){el.classList.toggle('selected');}
@@ -445,14 +445,14 @@ async function loadVideos(){
     _allTagOpts=(dt.tags||[]).map(t=>'<option value="'+t.id+'">'+t.emoji+' '+esc2(t.label)+'</option>').join('');
     if(!dv.videos||!dv.videos.length){document.getElementById('videos-list').innerHTML='<div class="empty"><div class="ei">🎬</div><p>Video yok</p></div>';return;}
     document.getElementById('videos-list').innerHTML=dv.videos.map(function(v){
-        var tagsHtml=(v.tags&&v.tags.length)?v.tags.map(t=>'<span class="vid-tag-pill">'+(t.emoji||'🏷️')+' '+esc2(t.label)+'</span>').join(''):' <span style="font-size:11px;color:rgba(255,255,255,.3)">Etiketsiz</span>';
+        var tagsHtml=(v.tags&&v.tags.length)?v.tags.map(t=>'<span class="vid-tag-pill">'+(t.emoji||'🏷️')+' '+esc2(t.label)+'</span>').join(''):' <span style="font-size:11px;color:rgba(255,255,255,.3)">Kategorisiz</span>';
         var safeT=(v.title||'').replace(/'/g,"\\'");
         return '<div class="card"><div class="cb">'
             +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">'
             +'<div style="flex:1;margin-right:7px"><div class="ct">'+esc2(v.title)+'</div><div class="uid">#'+v.id+'</div></div>'
             +'</div>'
             +'<div style="margin-bottom:6px">'+tagsHtml+'</div>'
-            +'<div style="font-size:10px;color:rgba(255,255,255,.3);margin-bottom:6px">Etiket değiştir:</div>'
+            +'<div style="font-size:10px;color:rgba(255,255,255,.3);margin-bottom:6px">Kategori değiştir:</div>'
             +'<div id="vtag-sel-'+v.id+'" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px">'
             +(dt.tags||[]).map(function(t){
                 var checked=(v.tags||[]).some(vt=>vt.slug===t.slug);
@@ -461,7 +461,7 @@ async function loadVideos(){
             }).join('')
             +'</div>'
             +'<div class="btn-row">'
-            +'<button class="btn btn-s" onclick="saveVideoTags('+v.id+')">💾 Etiket Kaydet</button>'
+            +'<button class="btn btn-s" onclick="saveVideoTags('+v.id+')">💾 Kategori Kaydet</button>'
             +'<button class="btn btn-i" onclick="openBundle('+v.id+',\''+safeT+'\')">📦 Bundle</button>'
             +'<button class="btn btn-d" onclick="confDelVideo('+v.id+',\''+safeT+'\')">🗑️ Sil</button>'
             +'</div></div></div>';
@@ -470,7 +470,7 @@ async function loadVideos(){
 async function saveVideoTags(vid){
     var checkedIds=Array.from(document.querySelectorAll('#vtag-sel-'+vid+' input:checked')).map(i=>parseInt(i.value));
     var r=await api('/videos/'+vid+'/set-tags','POST',{tag_ids:checkedIds});
-    toast(r.success?'✅ Etiketler kaydedildi!':'❌ '+(r.error||''),!r.success);
+    toast(r.success?'✅ Kategoriler kaydedildi!':'❌ '+(r.error||''),!r.success);
     if(r.success)loadVideos();
 }
 function confDelVideo(id,title){confirm2('Video Sil','"'+title+'" silinecek?',async function(){var r=await api('/videos/'+id,'DELETE');toast(r.success?'✅ Silindi!':'❌ '+(r.error||''),!r.success);if(r.success){loadStats();loadVideos();}});}
@@ -575,7 +575,7 @@ async function saveChannel(){var chId=document.getElementById('ch-id').value.tri
 async function loadUntaggedVideos(){
     document.getElementById('untagged-videos').innerHTML='<div class="loading">⏳</div>';
     var d=await api('/videos/untagged');var dt=await api('/tags');var tags=dt.tags||[];
-    if(!d.videos||!d.videos.length){document.getElementById('untagged-videos').innerHTML='<div class="empty"><div class="ei">🏷️</div><p>Etiketsiz video yok</p></div>';return;}
+    if(!d.videos||!d.videos.length){document.getElementById('untagged-videos').innerHTML='<div class="empty"><div class="ei">🏷️</div><p>Kategorisiz video yok</p></div>';return;}
     document.getElementById('untagged-videos').innerHTML=d.videos.map(function(v){
         var safeTitle=(v.title||'Video #'+v.id).replace(/'/g,"\\'");
         var tagCheckboxes=tags.map(t=>'<label class="tag-check-lbl" onclick="this.classList.toggle(\'selected\')"><input type="checkbox" value="'+t.id+'">'+(t.emoji||'🏷️')+' '+esc2(t.label)+'</label>').join('');
@@ -583,20 +583,20 @@ async function loadUntaggedVideos(){
             +'<div class="ct" id="untagged-title-txt-'+v.id+'">'+(v.title||'Video #'+v.id)+'</div>'
             +'<div class="uid">#'+v.id+' | msg:'+(v.message_id||'-')+'</div>'
             +'<input class="inp" id="untagged-title-'+v.id+'" placeholder="Yeni başlık..." value="'+safeTitle+'" style="margin-top:7px">'
-            +'<div style="font-size:10px;color:rgba(255,255,255,.35);margin-bottom:5px">Etiket seç:</div>'
+            +'<div style="font-size:10px;color:rgba(255,255,255,.35);margin-bottom:5px">Kategori seç:</div>'
             +'<div id="untag-checks-'+v.id+'" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px">'+tagCheckboxes+'</div>'
             +'<div class="btn-row">'
             +'<button class="btn" style="background:#0ea5e9;color:#fff" onclick="saveUncatTitle('+v.id+')">📝 Başlık</button>'
-            +'<button class="btn btn-s" style="flex:1" onclick="tagUntaggedVideo('+v.id+')">🏷️ Etiket Ata</button>'
+            +'<button class="btn btn-s" style="flex:1" onclick="tagUntaggedVideo('+v.id+')">🏷️ Kategori Ata</button>'
             +'<button class="btn btn-d" onclick="confDelUncat('+v.id+',\''+safeTitle+'\')">🗑️ Sil</button>'
             +'</div></div></div>';
     }).join('');
 }
 async function tagUntaggedVideo(id){
     var checkedIds=Array.from(document.querySelectorAll('#untag-checks-'+id+' input:checked')).map(i=>parseInt(i.value));
-    if(!checkedIds.length){toast('En az bir etiket seçin!',true);return;}
+    if(!checkedIds.length){toast('En az bir kategori seçin!',true);return;}
     var r=await api('/videos/'+id+'/set-tags','POST',{tag_ids:checkedIds});
-    toast(r.success?'✅ Etiketler atandı!':'❌ '+(r.error||''),!r.success);
+    toast(r.success?'✅ Kategoriler atandı!':'❌ '+(r.error||''),!r.success);
     if(r.success){var el=document.getElementById('untagged-'+id);if(el){el.style.opacity='0';}setTimeout(()=>{loadUntaggedVideos();},250);loadStats();}
 }
 async function saveUncatTitle(id){var t=document.getElementById('untagged-title-'+id).value.trim();if(!t){toast('Başlık girin!',true);return;}var r=await api('/videos/'+id+'/title','POST',{title:t});toast(r.success?'✅ Başlık kaydedildi!':'❌ '+(r.error||''),!r.success);if(r.success){document.getElementById('untagged-title-txt-'+id).textContent=t;loadVideos();}}
