@@ -799,7 +799,7 @@ def api_prepare_video():
         tag_names = [r[0] for r in cur.fetchall()]
     if bot_instance:
         try:
-            tags_line = ', '.join(tag_names) if tag_names else 'Etiket yok'
+            tags_line = ', '.join(tag_names) if tag_names else 'Kategori yok'
             bot_instance.send_message(ADMIN_ID, f"📤 *Video Yükleme Hazır!*\n\n🏷️ `{tags_line}`\n🎬 *{title}*\n\nŞimdi videoyu gönderin 👇", parse_mode='Markdown')
         except:
             pass
@@ -1335,7 +1335,7 @@ def main_menu_kb(uid):
     prem = is_premium(uid)
     rows = [
         [
-            telegram.InlineKeyboardButton("🏷️ Etiketler", callback_data="menu_tags:0"),
+            telegram.InlineKeyboardButton("🏷️ Kategoriler", callback_data="menu_tags:0"),
             telegram.InlineKeyboardButton("⭐ Durumum", callback_data="menu_prem"),
         ],
         [
@@ -1410,7 +1410,7 @@ def subcats_kb(root_slug):
             f"{emoji or '🎬'} {label} ({cnt} video)",
             callback_data=f"subcat:{slug}:0"
         )])
-    rows.append([telegram.InlineKeyboardButton("🏷️ Etiketler", callback_data="menu_tags:0")])
+    rows.append([telegram.InlineKeyboardButton("🏷️ Kategoriler", callback_data="menu_tags:0")])
     return with_menu(rows), subcats
 
 def _videos_in_cat(slug, page=0, per_page=6):
@@ -1439,7 +1439,7 @@ def videos_kb(slug, page=0, uid=None, per_page=6):
         nav.append(telegram.InlineKeyboardButton("Sonraki ▶️", callback_data=f"subcat:{slug}:{page + 1}"))
     if nav:
         rows.append(nav)
-    rows.append([telegram.InlineKeyboardButton("🏷️ Etiketler", callback_data="menu_tags:0")])
+    rows.append([telegram.InlineKeyboardButton("🏷️ Kategoriler", callback_data="menu_tags:0")])
     return with_menu(rows), videos, total
 
 def packages_kb():
@@ -1484,7 +1484,7 @@ def handle_callback(update, context):
         """)
         tags = cur.fetchall()
         if not tags:
-            safe_edit(q, "🏷️ *Etiketler*\n\nHenüz etiket eklenmemiş.", parse_mode='Markdown', reply_markup=with_menu([]))
+            safe_edit(q, "🏷️ *Kategoriler*\n\nHenüz kategori eklenmemiş.", parse_mode='Markdown', reply_markup=with_menu([]))
             return
         per_page = 8
         total = len(tags)
