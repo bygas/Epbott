@@ -333,7 +333,7 @@ function renderHome(d){
     html+='<div style="display:flex;gap:10px;padding:0 14px 14px">'
         +'<div style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:800;color:var(--purple2)">'+d.total_videos+'</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Video</div></div>'
         +'<div style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:800;color:var(--gold2)">'+d.total_members+'</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Üye</div></div>'
-        +'<div style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:800;color:#22c55e">'+(d.tags?d.tags.length:0)+'</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Etiket</div></div>'
+        +'<div style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:800;color:#22c55e">'+(d.tags?d.tags.length:0)+'</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Kategori</div></div>'
         +'</div>';
 
     // Premium card
@@ -413,7 +413,7 @@ function renderTagsPage(){
     var tags=homeData&&homeData.tags?homeData.tags:[];
     var el=document.getElementById('tags-scroll');
     document.getElementById('tags-sub').textContent=(tags.length)+' etiket';
-    if(!tags.length){el.innerHTML='<div class="empty-state"><div class="ei">🏷️</div><h3>Etiket Yok</h3><p>Henüz etiket eklenmemiş</p></div>';return;}
+    if(!tags.length){el.innerHTML='<div class="empty-state"><div class="ei">🏷️</div><h3>Kategori Yok</h3><p>Henüz etiket eklenmemiş</p></div>';return;}
     var html='<div class="section" style="padding-top:14px"><div class="tag-grid">';
     tags.forEach(function(tag){
         html+='<div class="tag-card" onclick="openTag(\''+esc(tag.slug)+'\',\''+esc(tag.label)+'\',\''+esc(tag.emoji||'🏷️')+'\','+tag.count+')">'
