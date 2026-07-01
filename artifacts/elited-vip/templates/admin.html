@@ -122,12 +122,20 @@ select.inp option{background:#161630;color:#fff;}
 
 <!-- USERS -->
 <div id="tab-users" class="tab-content active">
-    <div class="card" style="margin-bottom:10px;border:1px solid rgba(124,58,237,.35);background:rgba(124,58,237,.08)"><div class="cb">
+    <div class="card" style="margin-bottom:8px;border:1px solid rgba(124,58,237,.35);background:rgba(124,58,237,.08)"><div class="cb">
         <div class="ct" style="margin-bottom:4px">🎁 Herkese Premium Hediye Et</div>
         <div class="cm" style="margin-bottom:8px">Tüm kullanıcılara premium ver + Telegram bildirimi gönder</div>
         <div class="irow" style="margin-bottom:0">
             <input class="inp" type="number" id="gift-days-u" placeholder="Gün sayısı" min="1" max="365" value="30" style="margin:0">
             <button class="btn btn-p" onclick="giftAllUsers()" style="flex:none;padding:0 14px;white-space:nowrap">🎁 Tümüne Hediye</button>
+        </div>
+    </div></div>
+    <div class="card" style="margin-bottom:10px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.06)"><div class="cb">
+        <div class="ct" style="margin-bottom:4px">🆓 Sadece Premium Olmayanlar</div>
+        <div class="cm" style="margin-bottom:8px">Yalnızca süresi dolmuş veya hiç premium almamış üyelere hediye et</div>
+        <div class="irow" style="margin-bottom:0">
+            <input class="inp" type="number" id="gift-days-np" placeholder="Gün sayısı" min="1" max="365" value="30" style="margin:0">
+            <button class="btn btn-s" onclick="giftNonPremiumUsers()" style="flex:none;padding:0 14px;white-space:nowrap">🎁 Olmayanlar</button>
         </div>
     </div></div>
     <div class="divider"></div>
@@ -373,6 +381,15 @@ async function giftAllUsers(){
     if(days<1){toast('Geçersiz gün!',true);return;}
     confirm2('🎁 Herkese Premium','Tüm kullanıcılara '+days+' gün premium eklenecek. Onaylıyor musunuz?',async function(){
         toast('⏳ İşleniyor...');var r=await api('/admin/gift-all','POST',{days:days,notify:true});
+        toast(r.success?'🎁 '+r.count+' kullanıcıya '+days+' gün eklendi!':'❌ '+(r.error||''),!r.success);
+        if(r.success){loadStats();loadUsers();}
+    });
+}
+async function giftNonPremiumUsers(){
+    var days=parseInt(document.getElementById('gift-days-np').value)||30;
+    if(days<1){toast('Geçersiz gün!',true);return;}
+    confirm2('🆓 Premium Olmayanlara Hediye','Süresi dolmuş veya hiç premium almamış üyelere '+days+' gün premium eklenecek. Onaylıyor musunuz?',async function(){
+        toast('⏳ İşleniyor...');var r=await api('/admin/gift-nonpremium','POST',{days:days,notify:true});
         toast(r.success?'🎁 '+r.count+' kullanıcıya '+days+' gün eklendi!':'❌ '+(r.error||''),!r.success);
         if(r.success){loadStats();loadUsers();}
     });

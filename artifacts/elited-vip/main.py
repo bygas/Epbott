@@ -992,6 +992,58 @@ def api_gift_all():
                 pass
     return jsonify(success=True, count=count, days=days)
 
+@app.route('/api/admin/gift-nonpremium', methods=['POST'])
+def api_gift_nonpremium():
+    data = request.get_json() or {}
+    days = int(data.get('days', 30))
+    notify = bool(data.get('notify', True))
+    if days < 1 or days > 3650:
+        return jsonify(success=False, error='Geçersiz gün')
+    db, cur = get_db()
+    now = datetime.datetime.now()
+    today = now.strftime('%Y-%m-%d')
+    # Sadece premium tarihi geçmiş veya hiç olmayan kullanıcılar
+    cur.execute("SELECT user_id FROM users WHERE premium_date IS NULL OR premium_date <= %s", (today,))
+    users = [r[0] for r in cur.fetchall()]
+    new_date = (now + datetime.timedelta(days=days)).strftime('%Y-%m-%d')
+    for uid in users:
+        cur.execute("UPDATE users SET premium_date=%s WHERE user_id=%s", (new_date, uid))
+    db.commit()
+    count = len(users)
+    if notify and bot_instance:
+        def _notify():
+            sent = 0
+            fail = 0
+            for uid in users:
+                try:
+                    bot_instance.send_message(uid,
+                        f"🎁 *{BOT_NAME} — Hediye Premium!*\n\n"
+                        f"✅ *{days} gün premium* hesabına eklendi!\n"
+                        f"📅 Bitiş: {new_date}\n\n"
+                        f"Keyifli izlemeler 🎬",
+                        parse_mode='Markdown',
+                        reply_markup=with_menu([]))
+                    sent += 1
+                except:
+                    fail += 1
+            if bot_instance:
+                try:
+                    bot_instance.send_message(ADMIN_ID,
+                        f"🎁 *Hediye Tamamlandı!*\n\n👥 {count} premium olmayan kullanıcı\n✅ Bildirim: {sent}\n❌ Başarısız: {fail}",
+                        parse_mode='Markdown')
+                except:
+                    pass
+        threading.Thread(target=_notify, daemon=True).start()
+    else:
+        if bot_instance:
+            try:
+                bot_instance.send_message(ADMIN_ID,
+                    f"🎁 *Hediye Tamamlandı!*\n\n👥 {count} premium olmayan kullanıcıya {days} gün premium eklendi.",
+                    parse_mode='Markdown')
+            except:
+                pass
+    return jsonify(success=True, count=count, days=days)
+
 @app.route('/api/broadcast', methods=['POST'])
 def api_broadcast():
     data = request.get_json()
@@ -1483,13 +1535,19 @@ def handle_callback(update, context):
             GROUP BY t.id ORDER BY t.label
         """)
         tags = cur.fetchall()
-        if not tags:
-            safe_edit(q, "🏷️ *Kategoriler*\n\nHenüz kategori eklenmemiş.", parse_mode='Markdown', reply_markup=with_menu([]))
-            return
         per_page = 8
         total = len(tags)
         chunk = tags[page * per_page:(page + 1) * per_page]
         rows = []
+        # Sadece ilk sayfada en üste hızlı erişim butonları göster
+        if page == 0:
+            rows.append([
+                telegram.InlineKeyboardButton("🆕 En Son Eklenenler", callback_data="menu_recent:0"),
+                telegram.InlineKeyboardButton("🔥 En Popülerler", callback_data="menu_popular:0"),
+            ])
+        if not tags:
+            safe_edit(q, "🏷️ *İçerikler*\n\nHenüz etiket eklenmemiş.", parse_mode='Markdown', reply_markup=with_menu(rows))
+            return
         for i in range(0, len(chunk), 2):
             row_btns = []
             for tag in chunk[i:i + 2]:
@@ -1507,6 +1565,87 @@ def handle_callback(update, context):
             rows.append(nav)
         safe_edit(q,
             f"🏷️ *Kategoriler* ({total} kategori)\n\nBir kategori seç:",
+            parse_mode='Markdown', reply_markup=with_menu(rows)
+        )
+
+    elif data.startswith("menu_recent:"):
+        page = int(data.split(":")[1])
+        per_page = 6
+        prem = is_premium(uid)
+        db, cur = get_db()
+        cur.execute(
+            "SELECT id, title FROM videos ORDER BY id DESC LIMIT %s OFFSET %s",
+            (per_page, page * per_page)
+        )
+        videos = cur.fetchall()
+        cur.execute("SELECT COUNT(*) FROM videos")
+        total = cur.fetchone()[0]
+        rows = []
+        for vid_id, title in videos:
+            clean = title.split('\n')[0].split('#')[0].strip()
+            short = clean[:30] + "…" if len(clean) > 32 else clean
+            if prem:
+                rows.append([telegram.InlineKeyboardButton(f"▶️ {short}", callback_data=f"sendvid:{vid_id}")])
+            else:
+                rows.append([telegram.InlineKeyboardButton(f"🔒 {short}", callback_data="menu_buy")])
+        nav = []
+        if page > 0:
+            nav.append(telegram.InlineKeyboardButton("◀️ Önceki", callback_data=f"menu_recent:{page - 1}"))
+        if (page + 1) * per_page < total:
+            nav.append(telegram.InlineKeyboardButton("Sonraki ▶️", callback_data=f"menu_recent:{page + 1}"))
+        if nav:
+            rows.append(nav)
+        rows.append([telegram.InlineKeyboardButton("🏷️ Etiketler", callback_data="menu_tags:0")])
+        status = "✅ Premium" if prem else "🔒 Premium gerekli"
+        vids_text = "".join(
+            f"\n{'▶️' if prem else '🔒'} {v[1].split(chr(10))[0].split('#')[0].strip()}"
+            for v in videos
+        ) or "\n_Henüz video eklenmemiş._"
+        safe_edit(q,
+            f"🆕 *En Son Eklenenler*\n📊 Toplam {total} video | Sayfa {page + 1} | {status}{vids_text}",
+            parse_mode='Markdown', reply_markup=with_menu(rows)
+        )
+
+    elif data.startswith("menu_popular:"):
+        page = int(data.split(":")[1])
+        per_page = 6
+        prem = is_premium(uid)
+        db, cur = get_db()
+        cur.execute("""
+            SELECT v.id, v.title, COUNT(vv.id) as vc
+            FROM videos v
+            LEFT JOIN video_views vv ON vv.video_id = v.id
+            GROUP BY v.id
+            ORDER BY vc DESC, v.id DESC
+            LIMIT %s OFFSET %s
+        """, (per_page, page * per_page))
+        videos = cur.fetchall()
+        cur.execute("SELECT COUNT(*) FROM videos")
+        total = cur.fetchone()[0]
+        rows = []
+        for vid_id, title, view_count in videos:
+            clean = title.split('\n')[0].split('#')[0].strip()
+            short = clean[:28] + "…" if len(clean) > 30 else clean
+            label = f"{'▶️' if prem else '🔒'} {short} ({view_count}👁)"
+            if prem:
+                rows.append([telegram.InlineKeyboardButton(label, callback_data=f"sendvid:{vid_id}")])
+            else:
+                rows.append([telegram.InlineKeyboardButton(label, callback_data="menu_buy")])
+        nav = []
+        if page > 0:
+            nav.append(telegram.InlineKeyboardButton("◀️ Önceki", callback_data=f"menu_popular:{page - 1}"))
+        if (page + 1) * per_page < total:
+            nav.append(telegram.InlineKeyboardButton("Sonraki ▶️", callback_data=f"menu_popular:{page + 1}"))
+        if nav:
+            rows.append(nav)
+        rows.append([telegram.InlineKeyboardButton("🏷️ Etiketler", callback_data="menu_tags:0")])
+        status = "✅ Premium" if prem else "🔒 Premium gerekli"
+        vids_text = "".join(
+            f"\n{'▶️' if prem else '🔒'} {v[1].split(chr(10))[0].split('#')[0].strip()} ({v[2]}👁)"
+            for v in videos
+        ) or "\n_Henüz video eklenmemiş._"
+        safe_edit(q,
+            f"🔥 *En Popülerler*\n📊 Sayfa {page + 1} | {status}{vids_text}",
             parse_mode='Markdown', reply_markup=with_menu(rows)
         )
 
