@@ -995,10 +995,13 @@ def api_gift_all():
 @app.route('/api/admin/gift-nonpremium', methods=['POST'])
 def api_gift_nonpremium():
     data = request.get_json() or {}
-    days = int(data.get('days', 30))
+    try:
+        days = int(data.get('days', 30))
+    except (ValueError, TypeError):
+        return jsonify(success=False, error='Geçersiz gün'), 400
     notify = bool(data.get('notify', True))
     if days < 1 or days > 3650:
-        return jsonify(success=False, error='Geçersiz gün')
+        return jsonify(success=False, error='Geçersiz gün'), 400
     db, cur = get_db()
     now = datetime.datetime.now()
     today = now.strftime('%Y-%m-%d')
